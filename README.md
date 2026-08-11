@@ -4,7 +4,7 @@ Personal portfolio website for **Alin Adrian Ivana**, focused on Python developm
 
 ## Live site
 
-**https://alinadrian.github.io**
+**https://www.alinadrian.dev**
 
 ## Highlights
 
@@ -36,12 +36,13 @@ Personal portfolio website for **Alin Adrian Ivana**, focused on Python developm
 ├── 404.html
 ├── sitemap.xml
 ├── robots.txt
+├── CNAME
 └── .nojekyll
 ```
 
 ## GitHub Pages deployment
 
-This repository is designed to be published as the user site **`alinadrian.github.io`**.
+This repository is the GitHub Pages source for the custom domain **`www.alinadrian.dev`** (repository: **`alinadrian.github.io`**).
 
 1. Upload the files from this folder to the root of the repository.
 2. Open **Settings → Pages**.
