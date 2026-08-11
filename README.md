@@ -61,3 +61,8 @@ The website publishes only the professional contact information intentionally in
 ---
 
 © 2026 Alin Adrian Ivana
+
+
+## SEO v2
+
+Production SEO assets include canonical URLs on `www.alinadrian.dev`, multilingual hreflang, structured data, real favicons, Open Graph social image, sitemap and robots.txt.
