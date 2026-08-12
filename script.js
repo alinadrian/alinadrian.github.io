@@ -186,3 +186,203 @@ backToTop.textContent = '↑';
 document.body.appendChild(backToTop);
 window.addEventListener('scroll', () => backToTop.classList.toggle('visible', window.scrollY > 650), { passive: true });
 backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+// =========================================================
+// SEO V2.4 — page-specific professional motion design
+// No third-party libraries; respects reduced-motion settings.
+// =========================================================
+(() => {
+  const filename = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  const pageByFile = {
+    'index.html': 'home',
+    'despre.html': 'about', 'about.html': 'about', 'chi-sono.html': 'about', 'hakkimda.html': 'about',
+    'competente.html': 'skills', 'skills.html': 'skills', 'competenze.html': 'skills', 'beceriler.html': 'skills',
+    'proiecte.html': 'projects', 'projects.html': 'projects', 'progetti.html': 'projects', 'projeler.html': 'projects',
+    'contact.html': 'contact', 'contatti.html': 'contact', 'iletisim.html': 'contact',
+  };
+  const page = pageByFile[filename];
+  if (!page) return;
+  document.body.classList.add(`page-${page}`);
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) return;
+
+  // Homepage: a low-density canvas particle field with short connecting lines.
+  if (page === 'home') {
+    const hero = document.querySelector('.hero');
+    if (hero) {
+      const canvas = document.createElement('canvas');
+      canvas.className = 'tech-particles';
+      canvas.setAttribute('aria-hidden', 'true');
+      hero.prepend(canvas);
+
+      const glyphLayer = document.createElement('div');
+      glyphLayer.className = 'tech-glyph-layer';
+      glyphLayer.setAttribute('aria-hidden', 'true');
+      const glyphs = ['{ }', '</>', '01', 'λ', 'API', '[]'];
+      const positions = [[8,23],[22,74],[48,14],[67,77],[84,32],[92,66]];
+      glyphs.forEach((text, index) => {
+        const span = document.createElement('span');
+        span.className = 'tech-glyph';
+        span.textContent = text;
+        span.style.left = `${positions[index][0]}%`;
+        span.style.top = `${positions[index][1]}%`;
+        span.style.animationDelay = `${-index * 2.7}s`;
+        glyphLayer.appendChild(span);
+      });
+      hero.prepend(glyphLayer);
+
+      const ctx = canvas.getContext('2d', { alpha: true });
+      if (!ctx) return;
+      let width = 1;
+      let height = 1;
+      let dpr = 1;
+      let particles = [];
+      let raf = 0;
+      let isVisible = true;
+
+      const hexToRgba = (hex, alpha) => {
+        const normalized = String(hex || '').trim();
+        const match = /^#([0-9a-f]{6})$/i.exec(normalized);
+        if (!match) return `rgba(90,176,255,${alpha})`;
+        const value = parseInt(match[1], 16);
+        return `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})`;
+      };
+
+      const themeColors = () => {
+        const style = getComputedStyle(document.documentElement);
+        return {
+          primary: style.getPropertyValue('--primary').trim() || '#4ee1a0',
+          secondary: style.getPropertyValue('--secondary').trim() || '#5ab0ff',
+        };
+      };
+
+      const makeParticles = () => {
+        const compact = window.innerWidth < 760;
+        const count = compact ? 16 : Math.min(38, Math.max(24, Math.round(width / 32)));
+        particles = Array.from({ length: count }, (_, i) => ({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - .5) * (compact ? .085 : .13),
+          vy: (Math.random() - .5) * (compact ? .085 : .13),
+          r: .75 + Math.random() * 1.05,
+          type: i % 3,
+        }));
+      };
+
+      const resize = () => {
+        const rect = hero.getBoundingClientRect();
+        width = Math.max(1, rect.width);
+        height = Math.max(1, rect.height);
+        dpr = Math.min(window.devicePixelRatio || 1, 1.6);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        makeParticles();
+      };
+
+      const draw = () => {
+        if (!isVisible) { raf = requestAnimationFrame(draw); return; }
+        ctx.clearRect(0, 0, width, height);
+        const colors = themeColors();
+        const linkDistance = window.innerWidth < 760 ? 92 : 126;
+
+        particles.forEach((p) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < -8) p.x = width + 8;
+          if (p.x > width + 8) p.x = -8;
+          if (p.y < -8) p.y = height + 8;
+          if (p.y > height + 8) p.y = -8;
+        });
+
+        for (let i = 0; i < particles.length; i += 1) {
+          for (let j = i + 1; j < particles.length; j += 1) {
+            const a = particles[i];
+            const b = particles[j];
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < linkDistance) {
+              const alpha = (1 - dist / linkDistance) * .085;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.strokeStyle = hexToRgba(i % 2 ? colors.primary : colors.secondary, alpha);
+              ctx.lineWidth = .65;
+              ctx.stroke();
+            }
+          }
+        }
+
+        particles.forEach((p) => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = hexToRgba(p.type ? colors.secondary : colors.primary, .28);
+          ctx.fill();
+        });
+        raf = requestAnimationFrame(draw);
+      };
+
+      // Throttled window resize avoids ResizeObserver loop warnings while keeping
+      // the professional particle background responsive.
+      let resizeRaf = 0;
+      const scheduleResize = () => {
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(() => {
+          resizeRaf = 0;
+          resize();
+        });
+      };
+      window.addEventListener('resize', scheduleResize, { passive: true });
+      window.addEventListener('orientationchange', scheduleResize, { passive: true });
+      if (document.fonts?.ready) document.fonts.ready.then(scheduleResize).catch(() => {});
+      document.addEventListener('visibilitychange', () => { isVisible = !document.hidden; });
+      resize();
+      draw();
+      window.addEventListener('pagehide', () => {
+        cancelAnimationFrame(raf);
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      }, { once: true });
+    }
+  }
+
+  // Projects: restrained pointer tilt on capable desktop pointers only.
+  if (page === 'projects' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    document.querySelectorAll('.project-wide').forEach((card) => {
+      const reset = () => {
+        card.style.transform = '';
+        card.style.removeProperty('--glow-x');
+        card.style.removeProperty('--glow-y');
+      };
+      card.addEventListener('pointermove', (event) => {
+        const rect = card.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / rect.width;
+        const y = (event.clientY - rect.top) / rect.height;
+        const rotateY = (x - .5) * 2.2;
+        const rotateX = (.5 - y) * 1.7;
+        card.style.setProperty('--glow-x', `${(x * 100).toFixed(1)}%`);
+        card.style.setProperty('--glow-y', `${(y * 100).toFixed(1)}%`);
+        card.style.transform = `perspective(1100px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateY(-2px)`;
+      });
+      card.addEventListener('pointerleave', reset);
+      card.addEventListener('blur', reset, true);
+    });
+  }
+
+
+  // Discreet protection for personal profile media only.
+  // This intentionally does NOT disable right-click, selection or keyboard shortcuts site-wide.
+  document.querySelectorAll('[data-protected-media]').forEach((media) => {
+    media.querySelectorAll('img').forEach((img) => {
+      img.draggable = false;
+      img.setAttribute('draggable', 'false');
+    });
+    ['contextmenu', 'dragstart', 'selectstart'].forEach((type) => {
+      media.addEventListener(type, (event) => event.preventDefault());
+    });
+  });
+
+})();

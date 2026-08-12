@@ -77,3 +77,18 @@ SEO v2.1 updates the professional positioning and structured data to match the c
 - Email delivery uses Cloudflare Email Routing to the private Gmail inbox; the Gmail address is not exposed on the site.
 - Profile portrait updated to the latest professional 4:5 image and displayed larger on About pages.
 - Dark-blue theme removed; only Graphite and White/Light remain. Existing saved `dark` preferences migrate automatically to Graphite.
+
+## SEO V2.4 — Professional motion design
+
+Page-specific, dependency-free motion was added without changing content or SEO structure:
+- Homepage: subtle connected particles and faint code glyphs.
+- About: slow portrait glow and transparent geometric accents.
+- Skills: fine technical grid and restrained hover micro-interactions.
+- Projects: ambient background, subtle depth/glow and desktop pointer tilt.
+- Contact: intentionally calm/static.
+- Accessibility/performance: animations respect `prefers-reduced-motion`; mobile effects are reduced.
+
+
+## Discreet profile-image protection
+
+The profile photo uses non-invasive browser-level deterrents: disabled image dragging, disabled context menu/long-press callout on the protected photo only, disabled selection on the protected media container, and a subtle on-page domain watermark. Text selection, right-click and normal browser behavior remain available everywhere else. These measures discourage casual copying but cannot technically prevent operating-system screenshots or direct asset retrieval by a determined user.
