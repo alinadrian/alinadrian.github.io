@@ -1,10 +1,10 @@
 :root {
-  --bg: #07101c;
-  --bg-soft: #0b1726;
-  --card: rgba(15, 30, 48, 0.74);
-  --card-strong: #10223a;
-  --text: #f4f7fb;
-  --muted: #9eb0c4;
+  --bg: #0d0f11;
+  --bg-soft: #121518;
+  --card: rgba(24, 27, 30, .78);
+  --card-strong: #191d20;
+  --text: #f3f4f5;
+  --muted: #a5a9ae;
   --line: rgba(255, 255, 255, 0.09);
   --primary: #4ee1a0;
   --primary-dark: #1fbd79;
@@ -47,7 +47,7 @@ button, input, textarea { font: inherit; }
   justify-content: space-between;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: rgba(7, 16, 28, .74);
+  background: rgba(13, 15, 17, .86);
   backdrop-filter: blur(18px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, .18);
 }
@@ -80,7 +80,7 @@ button, input, textarea { font: inherit; }
 .hero-meta strong, .hero-meta span { display: block; }
 .hero-meta span { margin-top: 4px; font-size: .78rem; color: var(--muted); }
 
-.code-window { position: relative; border: 1px solid var(--line); border-radius: 24px; overflow: hidden; background: linear-gradient(145deg, rgba(16, 34, 58, .96), rgba(8, 19, 33, .96)); box-shadow: var(--shadow); transform: rotate(1.5deg); }
+.code-window { position: relative; border: 1px solid var(--line); border-radius: 24px; overflow: hidden; background: linear-gradient(145deg, rgba(28, 31, 34, .98), rgba(11, 13, 15, .98)); box-shadow: var(--shadow); transform: rotate(1.5deg); }
 .code-window::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); pointer-events: none; }
 .window-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: .75rem; }
 .window-dots { display: flex; gap: 7px; }
@@ -517,16 +517,17 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 /* CV and professional profile integration */
 .profile-card-top {
   display: grid;
-  grid-template-columns: 118px 1fr;
+  grid-template-columns: 220px 1fr;
   align-items: center;
   gap: 24px;
   margin-bottom: 14px;
 }
 .profile-photo {
-  width: 118px;
-  height: 118px;
+  width: 220px;
+  height: 275px;
   object-fit: cover;
-  border-radius: 50%;
+  object-position: center top;
+  border-radius: 22px;
   border: 3px solid rgba(78,225,160,.65);
   box-shadow: 0 18px 38px rgba(0,0,0,.24);
   background: var(--card);
@@ -570,7 +571,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 @media (max-width: 560px) {
   .profile-card-top { grid-template-columns: 1fr; }
-  .profile-photo { width: 104px; height: 104px; }
+  .profile-photo { width: 160px; height: 200px; }
 }
 
 
@@ -665,7 +666,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 [data-theme="graphite"] .info-card p { color: #cdd0d3; }
 [data-theme="graphite"] .language-switcher { background: rgba(255, 255, 255, .025); }
 
-/* Three-theme control: Dark → Graphite → Light */
+/* Two-theme control: Graphite ↔ Light */
 .theme-toggle {
   width: 68px;
   display: inline-flex;

@@ -34,23 +34,24 @@ document.querySelectorAll('[data-year]').forEach((element) => {
 });
 
 const themeButton = document.querySelector('.theme-toggle');
-const availableThemes = ['dark', 'graphite', 'light'];
-const savedTheme = localStorage.getItem('portfolio-theme');
+const availableThemes = ['graphite', 'light'];
+const savedThemeRaw = localStorage.getItem('portfolio-theme');
+// Migrate the removed dark-blue theme to Graphite for returning visitors.
+const savedTheme = savedThemeRaw === 'dark' ? 'graphite' : savedThemeRaw;
 const systemPrefersLight = window.matchMedia?.('(prefers-color-scheme: light)').matches;
-const initialTheme = availableThemes.includes(savedTheme) ? savedTheme : (systemPrefersLight ? 'light' : 'dark');
+const initialTheme = availableThemes.includes(savedTheme) ? savedTheme : (systemPrefersLight ? 'light' : 'graphite');
 
 const themeLabels = {
-  dark: root.dataset.themeDarkLabel || 'Switch to dark theme',
   graphite: root.dataset.themeGraphiteLabel || 'Switch to graphite theme',
   light: root.dataset.themeLightLabel || 'Switch to light theme',
 };
-const themeIcons = { dark: '☾', graphite: '◐', light: '☀' };
+const themeIcons = { graphite: '◐', light: '☀' };
 
 function updateThemeMeta(theme) {
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (!metaThemeColor) return;
-  const colors = { dark: '#07101c', graphite: '#0d0f11', light: '#eef4f8' };
-  metaThemeColor.setAttribute('content', colors[theme] || colors.dark);
+  const colors = { graphite: '#0d0f11', light: '#eef4f8' };
+  metaThemeColor.setAttribute('content', colors[theme] || colors.graphite);
 }
 
 function updateThemeButton(theme) {
@@ -73,6 +74,9 @@ function updateThemeButton(theme) {
 
 root.dataset.theme = initialTheme;
 updateThemeButton(initialTheme);
+
+// Remove the obsolete saved value once migrated.
+if (savedThemeRaw === 'dark') localStorage.setItem('portfolio-theme', 'graphite');
 
 themeButton?.addEventListener('click', () => {
   const currentIndex = availableThemes.indexOf(root.dataset.theme);
