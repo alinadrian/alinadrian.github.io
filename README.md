@@ -92,3 +92,7 @@ Page-specific, dependency-free motion was added without changing content or SEO 
 ## Discreet profile-image protection
 
 The profile photo uses non-invasive browser-level deterrents: disabled image dragging, disabled context menu/long-press callout on the protected photo only, disabled selection on the protected media container, and a subtle on-page domain watermark. Text selection, right-click and normal browser behavior remain available everywhere else. These measures discourage casual copying but cannot technically prevent operating-system screenshots or direct asset retrieval by a determined user.
+
+
+## SEO V2.4.2
+Profile-photo protection hardened with a transparent interaction shield and capture-phase context-menu blocking, scoped only to the personal photo.

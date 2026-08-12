@@ -380,9 +380,18 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
       img.draggable = false;
       img.setAttribute('draggable', 'false');
     });
-    ['contextmenu', 'dragstart', 'selectstart'].forEach((type) => {
-      media.addEventListener(type, (event) => event.preventDefault());
-    });
+  });
+
+  // Capture-phase protection is deliberately scoped to profile media.
+  // The transparent shield means the browser never receives the actual <img> as the right-click target.
+  ['contextmenu', 'dragstart', 'selectstart'].forEach((type) => {
+    document.addEventListener(type, (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || !target.closest('[data-protected-media]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    }, true);
   });
 
 })();
