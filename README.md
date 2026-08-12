@@ -96,3 +96,7 @@ The profile photo uses non-invasive browser-level deterrents: disabled image dra
 
 ## SEO V2.4.2
 Profile-photo protection hardened with a transparent interaction shield and capture-phase context-menu blocking, scoped only to the personal photo.
+
+
+## Brand update
+Header branding uses the AAI monogram and the full name Alin Adrian Ivana, with Full Stack Developer as a compact technical descriptor.

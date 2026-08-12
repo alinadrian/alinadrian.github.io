@@ -1,1 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#07101c"/><rect x="3" y="3" width="58" height="58" rx="12" fill="none" stroke="#4ee1a0" stroke-width="3"/><text x="32" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="24" fill="#4ee1a0">&lt;/&gt;</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4ee1a0"/>
+      <stop offset="1" stop-color="#5ab0ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0d0f11"/>
+  <path d="M20 7h24l14 25-14 25H20L6 32z" fill="none" stroke="url(#g)" stroke-width="3"/>
+  <circle cx="47" cy="20" r="2.3" fill="#5ab0ff"/>
+  <text x="32" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="15" letter-spacing="1" fill="#4ee1a0">AAI</text>
+</svg>
