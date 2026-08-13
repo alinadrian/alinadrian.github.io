@@ -100,3 +100,11 @@ Profile-photo protection hardened with a transparent interaction shield and capt
 
 ## Brand update
 Header branding uses the AAI monogram and the full name Alin Adrian Ivana, with Full Stack Developer as a compact technical descriptor.
+
+
+## Final validation build — V2.4.9
+- Three themes: Graphite, Steel Blue, White
+- 10 localized languages with compact scrollable selector
+- Official Graphite + White + Cold Blue brand palette preserved
+- Cache-busted CSS/JS references
+- Photo protection retained

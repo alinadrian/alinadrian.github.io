@@ -34,7 +34,7 @@ document.querySelectorAll('[data-year]').forEach((element) => {
 });
 
 const themeButton = document.querySelector('.theme-toggle');
-const availableThemes = ['graphite', 'light'];
+const availableThemes = ['graphite', 'slate', 'light'];
 const savedThemeRaw = localStorage.getItem('portfolio-theme');
 // Migrate the removed dark-blue theme to Graphite for returning visitors.
 const savedTheme = savedThemeRaw === 'dark' ? 'graphite' : savedThemeRaw;
@@ -43,14 +43,15 @@ const initialTheme = availableThemes.includes(savedTheme) ? savedTheme : (system
 
 const themeLabels = {
   graphite: root.dataset.themeGraphiteLabel || 'Switch to graphite theme',
+  slate: root.dataset.themeSlateLabel || 'Switch to steel-blue theme',
   light: root.dataset.themeLightLabel || 'Switch to light theme',
 };
-const themeIcons = { graphite: '◐', light: '☀' };
+const themeIcons = { graphite: '◐', slate: '◆', light: '☀' };
 
 function updateThemeMeta(theme) {
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (!metaThemeColor) return;
-  const colors = { graphite: '#0d0f11', light: '#eef4f8' };
+  const colors = { graphite: '#1F2329', slate: '#202A35', light: '#FFFFFF' };
   metaThemeColor.setAttribute('content', colors[theme] || colors.graphite);
 }
 
