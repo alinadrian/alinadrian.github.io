@@ -73,7 +73,7 @@ SEO v2.1 updates the professional positioning and structured data to match the c
 
 ## SEO V2.3
 
-- Public professional email standardized to `contact@alinadrian.dev` in all 5 languages and all `mailto:`/contact-form actions.
+- Public professional email standardized to `contact@alinadrian.dev` in all 10 languages and all `mailto:`/contact-form actions.
 - Email delivery uses Cloudflare Email Routing to the private Gmail inbox; the Gmail address is not exposed on the site.
 - Profile portrait updated to the latest professional 4:5 image and displayed larger on About pages.
 - Dark-blue theme removed; only Graphite and White/Light remain. Existing saved `dark` preferences migrate automatically to Graphite.

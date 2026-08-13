@@ -195,10 +195,10 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
   const filename = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
   const pageByFile = {
     'index.html': 'home',
-    'despre.html': 'about', 'about.html': 'about', 'chi-sono.html': 'about', 'hakkimda.html': 'about',
-    'competente.html': 'skills', 'skills.html': 'skills', 'competenze.html': 'skills', 'beceriler.html': 'skills',
-    'proiecte.html': 'projects', 'projects.html': 'projects', 'progetti.html': 'projects', 'projeler.html': 'projects',
-    'contact.html': 'contact', 'contatti.html': 'contact', 'iletisim.html': 'contact',
+    'despre.html': 'about', 'about.html': 'about', 'chi-sono.html': 'about', 'hakkimda.html': 'about', 'ueber-mich.html': 'about', 'obo-mne.html': 'about', 'a-propos.html': 'about', 'sobre.html': 'about',
+    'competente.html': 'skills', 'skills.html': 'skills', 'competenze.html': 'skills', 'beceriler.html': 'skills', 'kompetenzen.html': 'skills', 'navyki.html': 'skills', 'competences.html': 'skills', 'competencias.html': 'skills',
+    'proiecte.html': 'projects', 'projects.html': 'projects', 'progetti.html': 'projects', 'projeler.html': 'projects', 'projekte.html': 'projects', 'proekty.html': 'projects', 'projets.html': 'projects', 'projetos.html': 'projects',
+    'contact.html': 'contact', 'contatti.html': 'contact', 'iletisim.html': 'contact', 'kontakt.html': 'contact', 'contato.html': 'contact',
   };
   const page = pageByFile[filename];
   if (!page) return;
@@ -394,4 +394,45 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
     }, true);
   });
 
+})();
+
+
+// SEO V2.4.6 — compact language dropdown behavior
+(() => {
+  const selectors = document.querySelectorAll('[data-language-selector]');
+  if (!selectors.length) return;
+
+  const closeAll = (except = null) => selectors.forEach((selector) => {
+    if (selector === except) return;
+    selector.classList.remove('open');
+    selector.querySelector('.language-current')?.setAttribute('aria-expanded', 'false');
+  });
+
+  selectors.forEach((selector) => {
+    const button = selector.querySelector('.language-current');
+    const menu = selector.querySelector('.language-menu');
+    if (!button || !menu) return;
+
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const willOpen = !selector.classList.contains('open');
+      closeAll(selector);
+      selector.classList.toggle('open', willOpen);
+      button.setAttribute('aria-expanded', String(willOpen));
+      if (willOpen) {
+        const active = menu.querySelector('.language-option.active');
+        active?.scrollIntoView({ block: 'nearest' });
+      }
+    });
+
+    menu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
+      selector.classList.remove('open');
+      button.setAttribute('aria-expanded', 'false');
+    }));
+  });
+
+  document.addEventListener('click', () => closeAll());
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeAll();
+  });
 })();
