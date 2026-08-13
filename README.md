@@ -1,110 +1,87 @@
 # Alin Adrian Ivana — Full Stack Developer Portfolio
 
-Personal portfolio website for **Alin Adrian Ivana**, positioned as a **Full Stack Developer | Python & JavaScript**.
+Production-ready static portfolio for **Alin Adrian Ivana — Full Stack Developer | Python & JavaScript**.
 
-The professional profile reflects two successfully completed LINK Academy training programs:
+## Live domain
+
+`https://www.alinadrian.dev`
+
+## Current build — V2.4.12 Stability Hardened
+
+### Languages
+The site contains 10 localized versions:
+
+- Romanian (`/`)
+- English (`/en/`)
+- Italian (`/it/`)
+- Spanish (`/es/`)
+- Turkish (`/tr/`)
+- German (`/de/`)
+- Russian (`/ru/`)
+- French (`/fr/`)
+- Portuguese (`/pt/`)
+- Arabic (`/ar/`, RTL)
+
+The header shows only the active language. The remaining languages are available in a compact, scrollable dropdown.
+
+### Themes
+Exactly three themes are available:
+
+1. **Graphite + Cold Blue**
+2. **Mint / Emerald**
+3. **White / Light**
+
+Old `dark` or `slate` saved preferences are migrated safely to Graphite.
+
+### Professional profile
+The portfolio reflects the completed LINK Academy programs:
 
 - **AI & Python Development**
 - **Frontend JavaScript Development**
 
-Core studied areas represented in the portfolio include Python, OOP, Django, MySQL/SQL, ORM, HTTP and REST services, JavaScript, HTML/CSS, software testing and QA, Machine Learning, NLP/LLMs and Figma. Modern tools such as FastAPI, PostgreSQL, Docker and cloud deployment are presented separately as current areas of further development.
+Technical areas represented include Python, OOP, Django, JavaScript, HTML/CSS, MySQL/SQL, ORM, HTTP/REST, testing/QA, Machine Learning, NLP/LLMs and Figma. FastAPI, PostgreSQL, Docker and deployment are presented separately as current areas of further development.
 
-## Live site
+### Contact
+Public address: `contact@alinadrian.dev`.
 
-**https://www.alinadrian.dev**
+Email delivery uses Cloudflare Email Routing. The private destination Gmail address is not exposed in the site source.
 
-## Highlights
+### Design and behavior
+- AAI monogram + full-name professional branding
+- responsive layout for desktop, tablet and mobile
+- subtle page-specific motion without third-party libraries
+- protected profile-photo interaction layer and discreet domain watermark
+- reduced-motion support
+- static contact form using `mailto:`
+- GitHub Pages compatible (`.nojekyll` and `CNAME` included)
 
-- responsive multi-page portfolio;
-- Romanian, English, Italian, Spanish and Turkish versions;
-- dark, graphite and light themes;
-- project filtering and subtle interface animations;
-- privacy-friendly contact form that opens the visitor's email application;
-- SEO: canonical URLs, multilingual hreflang, Open Graph, structured data, sitemap and robots.txt;
-- accessibility basics: semantic navigation, skip link, reduced-motion support and keyboard-friendly controls;
-- ready for GitHub Pages (`.nojekyll` included).
+### SEO
+- canonical URLs on `https://www.alinadrian.dev`
+- 10-language `hreflang` + `x-default`
+- Open Graph / Twitter metadata
+- JSON-LD structured data
+- `sitemap.xml` with 50 localized indexable pages
+- `robots.txt`
 
-## Structure
+## Stability hardening in V2.4.12
 
-```text
-/
-├── index.html
-├── despre.html
-├── competente.html
-├── proiecte.html
-├── contact.html
-├── en/
-├── it/
-├── es/
-├── tr/
-├── assets/
-├── styles.css
-├── script.js
-├── 404.html
-├── sitemap.xml
-├── robots.txt
-├── CNAME
-└── .nojekyll
-```
+- Core content is visible even if JavaScript is disabled, blocked or fails to initialize.
+- Theme persistence uses guarded `localStorage` access, so restricted preview/private/file contexts cannot abort the script.
+- Entrance animations are progressive enhancement only and include a visibility safety fallback.
+- Removed obsolete duplicated language-selector CSS from earlier builds.
+- No active `ResizeObserver`; resize behavior uses throttled `requestAnimationFrame`.
+- CSS and JavaScript are cache-busted with `v=2.4.12`.
 
-## GitHub Pages deployment
+## Deployment
 
-This repository is the GitHub Pages source for the custom domain **`www.alinadrian.dev`** (repository: **`alinadrian.github.io`**).
+Upload the **contents** of this package to the root of the GitHub repository `alinadrian/alinadrian.github.io` and deploy from `main` → `/(root)` in GitHub Pages.
 
-1. Upload the files from this folder to the root of the repository.
-2. Open **Settings → Pages**.
-3. Under **Build and deployment**, select **Deploy from a branch**.
-4. Select branch **main** and folder **/(root)**.
-5. Save and wait for deployment to finish.
-
-## Contact form
-
-GitHub Pages does not run server-side Python code. The contact form therefore uses a `mailto:` flow and does not store visitor messages on a server.
-
-## SEO v2.1
-
-SEO v2.1 updates the professional positioning and structured data to match the completed study reports: **Full Stack Developer | Python & JavaScript**, with the two official training program names preserved exactly. Percentages and exam scores are intentionally not published.
-
----
-
-© 2026 Alin Adrian Ivana
+Do not upload the ZIP itself as the website source.
 
 
-
-## SEO V2.3
-
-- Public professional email standardized to `contact@alinadrian.dev` in all 10 languages and all `mailto:`/contact-form actions.
-- Email delivery uses Cloudflare Email Routing to the private Gmail inbox; the Gmail address is not exposed on the site.
-- Profile portrait updated to the latest professional 4:5 image and displayed larger on About pages.
-- Dark-blue theme removed; only Graphite and White/Light remain. Existing saved `dark` preferences migrate automatically to Graphite.
-
-## SEO V2.4 — Professional motion design
-
-Page-specific, dependency-free motion was added without changing content or SEO structure:
-- Homepage: subtle connected particles and faint code glyphs.
-- About: slow portrait glow and transparent geometric accents.
-- Skills: fine technical grid and restrained hover micro-interactions.
-- Projects: ambient background, subtle depth/glow and desktop pointer tilt.
-- Contact: intentionally calm/static.
-- Accessibility/performance: animations respect `prefers-reduced-motion`; mobile effects are reduced.
-
-
-## Discreet profile-image protection
-
-The profile photo uses non-invasive browser-level deterrents: disabled image dragging, disabled context menu/long-press callout on the protected photo only, disabled selection on the protected media container, and a subtle on-page domain watermark. Text selection, right-click and normal browser behavior remain available everywhere else. These measures discourage casual copying but cannot technically prevent operating-system screenshots or direct asset retrieval by a determined user.
-
-
-## SEO V2.4.2
-Profile-photo protection hardened with a transparent interaction shield and capture-phase context-menu blocking, scoped only to the personal photo.
-
-
-## Brand update
-Header branding uses the AAI monogram and the full name Alin Adrian Ivana, with Full Stack Developer as a compact technical descriptor.
-
-
-## Final validation build — V2.4.9
-- Three themes: Graphite, Steel Blue, White
-- 10 localized languages with compact scrollable selector
-- Official Graphite + White + Cold Blue brand palette preserved
-- Cache-busted CSS/JS references
-- Photo protection retained
+## V2.4.13 stability hardening
+- Critical content never depends on JavaScript visibility.
+- External Google Fonts dependency removed; robust system font fallback used.
+- Motion effects are isolated as progressive enhancement.
+- Three themes preserved: Graphite/Cold Blue, Mint/Emerald, White.
+- Ten localized language versions preserved.

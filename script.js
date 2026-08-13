@@ -17,16 +17,27 @@ if (menuButton && navigation) {
   }));
 }
 
-if ('IntersectionObserver' in window) {
-  const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      observer.unobserve(entry.target);
-    }
-  }), { threshold: 0.12 });
-  document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
-} else {
-  document.querySelectorAll('.reveal').forEach((element) => element.classList.add('visible'));
+const revealElements = Array.from(document.querySelectorAll('.reveal'));
+const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+try {
+  if ('IntersectionObserver' in window && !reduceMotion) {
+    revealElements.forEach((element) => element.classList.add('reveal-pending'));
+    const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    }), { threshold: 0.12 });
+    revealElements.forEach((element) => observer.observe(element));
+    window.setTimeout(() => revealElements.forEach((element) => element.classList.add('visible')), 1800);
+  } else {
+    revealElements.forEach((element) => element.classList.add('visible'));
+  }
+} catch (_) {
+  revealElements.forEach((element) => {
+    element.classList.remove('reveal-pending');
+    element.classList.add('visible');
+  });
 }
 
 document.querySelectorAll('[data-year]').forEach((element) => {
@@ -34,24 +45,33 @@ document.querySelectorAll('[data-year]').forEach((element) => {
 });
 
 const themeButton = document.querySelector('.theme-toggle');
-const availableThemes = ['graphite', 'slate', 'light'];
-const savedThemeRaw = localStorage.getItem('portfolio-theme');
+if (themeButton) { themeButton.hidden = false; themeButton.style.removeProperty('display'); }
+const availableThemes = ['graphite', 'mint', 'light'];
+const safeStorage = {
+  get(key) {
+    try { return window.localStorage?.getItem(key) ?? null; } catch (_) { return null; }
+  },
+  set(key, value) {
+    try { window.localStorage?.setItem(key, value); } catch (_) { /* Storage may be blocked in preview/private contexts. */ }
+  },
+};
+const savedThemeRaw = safeStorage.get('portfolio-theme');
 // Migrate the removed dark-blue theme to Graphite for returning visitors.
-const savedTheme = savedThemeRaw === 'dark' ? 'graphite' : savedThemeRaw;
+const savedTheme = (savedThemeRaw === 'dark' || savedThemeRaw === 'slate') ? 'graphite' : savedThemeRaw;
 const systemPrefersLight = window.matchMedia?.('(prefers-color-scheme: light)').matches;
 const initialTheme = availableThemes.includes(savedTheme) ? savedTheme : (systemPrefersLight ? 'light' : 'graphite');
 
 const themeLabels = {
   graphite: root.dataset.themeGraphiteLabel || 'Switch to graphite theme',
-  slate: root.dataset.themeSlateLabel || 'Switch to steel-blue theme',
+  mint: root.dataset.themeMintLabel || 'Switch to mint theme',
   light: root.dataset.themeLightLabel || 'Switch to light theme',
 };
-const themeIcons = { graphite: '◐', slate: '◆', light: '☀' };
+const themeIcons = { graphite: '◐', mint: '✦', light: '☀' };
 
 function updateThemeMeta(theme) {
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (!metaThemeColor) return;
-  const colors = { graphite: '#1F2329', slate: '#202A35', light: '#FFFFFF' };
+  const colors = { graphite: '#1F2329', mint: '#0D0F11', light: '#FFFFFF' };
   metaThemeColor.setAttribute('content', colors[theme] || colors.graphite);
 }
 
@@ -77,13 +97,13 @@ root.dataset.theme = initialTheme;
 updateThemeButton(initialTheme);
 
 // Remove the obsolete saved value once migrated.
-if (savedThemeRaw === 'dark') localStorage.setItem('portfolio-theme', 'graphite');
+if (savedThemeRaw === 'dark' || savedThemeRaw === 'slate') safeStorage.set('portfolio-theme', 'graphite');
 
 themeButton?.addEventListener('click', () => {
   const currentIndex = availableThemes.indexOf(root.dataset.theme);
   const nextTheme = availableThemes[(currentIndex + 1) % availableThemes.length];
   root.dataset.theme = nextTheme;
-  localStorage.setItem('portfolio-theme', nextTheme);
+  safeStorage.set('portfolio-theme', nextTheme);
   updateThemeButton(nextTheme);
 });
 
@@ -193,6 +213,7 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
 // No third-party libraries; respects reduced-motion settings.
 // =========================================================
 (() => {
+  try {
   const filename = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
   const pageByFile = {
     'index.html': 'home',
@@ -205,8 +226,8 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
   if (!page) return;
   document.body.classList.add(`page-${page}`);
 
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduceMotion) return;
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  if (prefersReducedMotion) return;
 
   // Homepage: a low-density canvas particle field with short connecting lines.
   if (page === 'home') {
@@ -395,6 +416,9 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
     }, true);
   });
 
+  } catch (_) {
+    // Motion is progressive enhancement only; core content remains fully usable.
+  }
 })();
 
 
@@ -422,7 +446,7 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
       button.setAttribute('aria-expanded', String(willOpen));
       if (willOpen) {
         const active = menu.querySelector('.language-option.active');
-        active?.scrollIntoView({ block: 'nearest' });
+        try { active?.scrollIntoView({ block: 'nearest' }); } catch (_) { /* Non-critical preview fallback. */ }
       }
     });
 
