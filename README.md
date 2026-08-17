@@ -93,3 +93,9 @@ Do not upload the ZIP itself as the website source.
 - `sitemap.xml` `lastmod` values updated to `2026-08-17` for the deployment containing these SEO changes.
 - Existing canonical tags, hreflang annotations, robots directives, design, JavaScript behavior and page content are preserved.
 
+## v2.4.16 — LinkedIn + SEO consistency audit
+- Added LinkedIn profile link to every page footer.
+- Added LinkedIn to every localized contact page.
+- Added LinkedIn to Person structured-data `sameAs`.
+- Corrected localized BreadcrumbList URLs and ProfilePage IDs discovered during the audit.
+- Preserved canonical, hreflang, sitemap, robots, redirects and existing design behavior.
