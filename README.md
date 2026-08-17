@@ -85,3 +85,11 @@ Do not upload the ZIP itself as the website source.
 - Motion effects are isolated as progressive enhancement.
 - Three themes preserved: Graphite/Cold Blue, Mint/Emerald, White.
 - Ten localized language versions preserved.
+
+## V2.4.15 SEO canonical-link cleanup
+
+- Internal links that previously targeted `index.html` now point to the canonical directory URL (`/`, `/en/`, `/es/`, etc.).
+- Language-home links and home navigation now consistently use canonical URLs.
+- `sitemap.xml` `lastmod` values updated to `2026-08-17` for the deployment containing these SEO changes.
+- Existing canonical tags, hreflang annotations, robots directives, design, JavaScript behavior and page content are preserved.
+
