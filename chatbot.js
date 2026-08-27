@@ -1,0 +1,657 @@
+/*
+ * AlinAdrian.dev — local zero-cost chatbot v6
+ * - 100% client-side; no OpenAI/API calls.
+ * - Answers only from the curated knowledge base plus a local index of the public website.
+ * - Understands natural-language variants through aliases, intents, fuzzy matching and full-site local retrieval.
+ * - Session history is kept only in sessionStorage on the visitor's device.
+ */
+(() => {
+  'use strict';
+  const DATA = window.AA_LOCAL_CHATBOT_DATA;
+  const SITE_INDEX = window.AA_LOCAL_SITE_INDEX || {};
+  if (!DATA || !DATA.knowledge || !DATA.i18n) return;
+
+  const pageLang = ((document.documentElement.lang || 'ro').split('-')[0] || 'ro').toLowerCase();
+  const currentLang = DATA.i18n[pageLang] ? pageLang : 'en';
+  const ui = DATA.i18n[currentLang] || DATA.i18n.en;
+  const isRTL = currentLang === 'ar';
+  const storageKey = `aa-local-chatbot-v6-${currentLang}`;
+  const liveIndexStorageKey = `aa-local-site-index-v6-${currentLang}-${location.hostname || 'offline'}`;
+  let runtimeSiteChunks = (SITE_INDEX[currentLang] || []).map((chunk) => ({...chunk, _source:'site'}));
+  const maxMessages = 28;
+  let lastContext = null;
+
+  const normalize = (value) => String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’'`´]/g, '')
+    .replace(/[^\p{L}\p{N}+#.]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const stopWords = new Set(normalize(`
+    a ai al ale am are ar ca care ce cu da de din este eu fi fost in la lui ma mai mea meu ne nu o pe pentru sa se si sunt te un una unde poate putea lui despre
+    the a an and are as at be by for from has have he her his i in is it of on or she that this to was we what which who with you your does can about
+    il lo la i gli le un uno una e ed di da del della dei delle in su per con che chi come cosa e è sono ha hai hanno puo può
+    el la los las un una y de del en con por para que quien como cual cuales es son tiene puede
+    bir bu ve ile icin için ne kim nasil nasıl hangi var olan ben sen o
+    der die das ein eine und von zu mit für ist sind hat haben wer was wie welche kann
+    и в во на с со для о об это есть кто что как какой какие имеет может
+    le la les un une et de des du en avec pour est sont a ont qui quoi comment quel quels peut
+    o a os as um uma e de do da em com para que quem como qual quais tem pode
+    في من على عن مع إلى هذا هذه هو هي و ما من كيف أي لديه يستطيع
+  `).split(' ').filter(Boolean));
+
+  const rawTokens = (text) => normalize(text).split(' ').filter((token) => token.length > 1);
+  const tokenise = (text) => rawTokens(text).filter((token) => !stopWords.has(token));
+  const containsTerm = (text, term) => {
+    const q = normalize(text);
+    const a = normalize(term);
+    if (!q || !a) return false;
+    const qTokens = q.split(' ');
+    const aTokens = a.split(' ');
+    if (aTokens.length > 1) return (` ${q} `).includes(` ${a} `);
+    if (a.length <= 3) return qTokens.includes(a);
+    const stem = a.length >= 5 ? a.slice(0, Math.min(6, a.length)) : a;
+    return qTokens.some((token) => token === a || token.startsWith(a) || (a.length >= 5 && token.startsWith(stem)));
+  };
+
+  // Canonical concepts with multilingual aliases. These aliases let visitors ask the same
+  // thing in many different ways without storing hundreds of fixed Q&A sentences.
+  const concepts = {
+    identity: ['alin','alin adrian','alin adrian ivana','cine este','cine e','despre alin','who is','about alin','chi e','chi è','quien es','wer ist','qui est','quem e','quem é','кто','من هو'],
+    role: ['programator','developer','dezvoltator','full stack','fullstack','software developer','web developer','programmer','sviluppatore','desarrollador','entwickler','développeur','desenvolvedor','разработчик','مبرمج'],
+    skills: ['competente','abilitati','skill','skills','tehnologii','stack','ce stie','la ce se pricepe','ce poate','competenze','abilità','habilidades','beceriler','kompetenzen','навыки','compétences','competencias','مهارات'],
+    education: ['studii','studiat','a studiat','educatie','formare','cursuri','absolvit','absolvita','academy','link academy','diploma','training','education','formazione','formacion','ausbildung','egitim','обучение','formation','formacao','تدريب'],
+    experience: ['experienta','a lucrat','joburi','munca','cariera','experience','worked','career','esperienza','experiencia','erfahrung','deneyim','опыт','expérience','خبرة'],
+    contact: ['contact','contactez','contacta','email','e mail','mail','github','linkedin','mesaj','scrie','contacto','contatto','iletisim','kontakt','контакт','اتصال','تواصل'],
+    services: ['servicii','serviciu','colaborare','colaborari','ce poate construi','ce dezvolta','services','service','collaboration','servizi','servicios','dienstleistungen','services','serviços','خدمات'],
+    projects: ['proiect','proiecte','portofoliu','project','projects','portfolio','progetto','progetti','proyecto','proyectos','proje','projeler','projekt','projekte','проект','проекты','projet','projets','projeto','projetos','مشروع','مشاريع'],
+    learning: ['invata acum','aprofundeaza','studiaza acum','in prezent','learning now','currently learning','approfondisce','aprendiendo','vertieft','öğreniyor','изучает','apprend','aprendendo','يتعلم'],
+    backend: ['backend','server','api','rest','http','django','fastapi','orm'],
+    frontend: ['frontend','front end','html','css','javascript','js','interfata','interface','ui'],
+    database: ['baza de date','baze de date','database','databases','mysql','sql','postgresql','postgres','orm'],
+    ai: ['inteligenta artificiala','ai','machine learning','ml','nlp','llm','scipy','artificial intelligence'],
+    qa: ['testare','testing','qa','quality assurance','quality control','automatizare','automation'],
+    networking: ['networking','retele','retea','sockets','socket','http','soap','xml','web services'],
+    design: ['figma','design','ui','css avansat','advanced css','animation','animatie'],
+    cnc: ['cnc','programator cnc','desen tehnic','technical drawing'],
+    international: ['international','internationala','internationala','logistica','transport persoane','logistics','transport'],
+    python: ['python','oop','object oriented','programare orientata pe obiecte','data structures','debugging'],
+    javascript: ['javascript','java script','js','html','css','website building'],
+    rummy: ['rummy','remi','remi arena','rummy online'],
+    expense: ['expense tracker','cheltuieli','venituri','buget','budget','expenses'],
+    driver: ['driver jobs','driver jobs hub','sofer','soferi','șofer','șoferi','driver','drivers'],
+    website: ['site','website','alinadrian.dev','portofoliu personal','personal portfolio']
+  };
+
+  const intentRules = {
+    projects: concepts.projects,
+    skills: concepts.skills,
+    contact: concepts.contact,
+    learning: concepts.learning,
+    education: concepts.education,
+    experience: concepts.experience,
+    services: concepts.services,
+    about: [...concepts.identity, ...concepts.role]
+  };
+
+  const langHints = {
+    ro:['cine','ce','care','cum','unde','despre','stie','știe','poate','proiect','proiecte','competente','abilitati','contactez','formare','experienta','studii'],
+    en:['who','what','which','how','where','about','does','know','can','project','projects','skills','contact','training','experience','studies'],
+    it:['chi','cosa','quale','quali','come','dove','conosce','puo','può','progetti','competenze','contatto','formazione','esperienza'],
+    es:['quien','qué','que','cual','como','donde','sabe','conoce','puede','proyectos','habilidades','contacto','formacion','experiencia'],
+    tr:['kim','ne','hangi','nasil','nerede','biliyor','yapabilir','projeler','beceriler','iletisim','egitim','deneyim'],
+    de:['wer','was','welche','wie','wo','kennt','kann','projekte','kompetenzen','kontakt','ausbildung','erfahrung'],
+    ru:['кто','что','какие','как','где','знает','умеет','проекты','навыки','контакт','обучение','опыт'],
+    fr:['qui','quoi','quel','quels','comment','où','ou','sait','connait','peut','projets','competences','contact','formation','experience'],
+    pt:['quem','que','qual','como','onde','sabe','conhece','pode','projetos','competencias','contato','formacao','experiencia'],
+    ar:['من','ما','ماذا','كيف','أين','اين','يعرف','يستطيع','مشاريع','مهارات','اتصال','تدريب','خبرة']
+  };
+
+  const technologyTerms = {
+    python:['python','oop'], django:['django'], javascript:['javascript','java script','js'], html:['html','html5'], css:['css','css3'],
+    mysql:['mysql'], sql:['sql'], orm:['orm'], rest:['rest','restful'], fastapi:['fastapi'], postgresql:['postgresql','postgres'], docker:['docker'],
+    figma:['figma'], ml:['machine learning','ml'], nlp:['nlp'], llm:['llm'], qa:['qa','quality assurance','testing','testare'],
+    networking:['networking','sockets','socket'], http:['http'], soap:['soap'], xml:['xml'], scipy:['scipy'], deployment:['deployment','deploy'], jwt:['jwt'], cicd:['ci cd','ci/cd']
+  };
+
+  const privateFactPatterns = [
+    'varsta','vârsta','age','eta','età','edad','alter','возраст','idade','العمر',
+    'adresa','address','indirizzo','direccion','dirección','adresse','morada','عنوان',
+    'telefon','phone','telefono','téléphone','telefone','номер телефона','هاتف',
+    'salariu','salary','stipendio','sueldo','gehalt','salaire','salario','راتب',
+    'casatorit','căsătorit','married','sposato','casado','verheiratet','marié','женат','متزوج',
+    'familie','family','famiglia','familia','familie','семья','famille','عائلة'
+  ].map(normalize);
+
+  const allConceptAliases = Object.values(concepts).flat().map(normalize);
+  const scopeAnchors = [
+    'alin','adrian','ivana','alinadrian.dev','portofoliu','portfolio','site','website','full stack','developer','programator',
+    'python','django','javascript','html','css','mysql','sql','orm','rest','fastapi','postgresql','docker','figma','machine learning','nlp','llm','qa','testing','cnc',
+    'rummy','remi','expense tracker','driver jobs','github','linkedin','link academy','backend','frontend','baza de date','baze de date','database','databases'
+  ].map(normalize);
+  const offTopicPatterns = [
+    'vreme','meteo','weather','meteo','tempo oggi','previsioni','clima','wetter','погода','météo','الطقس',
+    'fotbal','football','soccer','tenis','tennis','nba','sport','sports','știri','stiri','news','notizie','noticias','nachrichten','новости','actualites','actualité',
+    'bitcoin','crypto','criptomonede','alegeri','election','politica','politics','recipe','reteta','rețeta','film','movie','muzica','music'
+  ].map(normalize);
+
+
+  const detectLanguage = (question) => {
+    const q = normalize(question);
+    const qWords = q.split(' ');
+    const strictHint = (hint) => {
+      const h = normalize(hint);
+      if (!h) return false;
+      return h.includes(' ') ? (` ${q} `).includes(` ${h} `) : qWords.includes(h);
+    };
+    let best = currentLang, bestScore = 0;
+    Object.entries(langHints).forEach(([lang, hints]) => {
+      const score = hints.reduce((sum, hint) => sum + (strictHint(hint) ? 1 : 0), 0);
+      if (score > bestScore) { bestScore = score; best = lang; }
+    });
+    return bestScore ? best : currentLang;
+  };
+
+  const matchConcepts = (question) => {
+    const q = normalize(question);
+    const hits = [];
+    Object.entries(concepts).forEach(([concept, aliases]) => {
+      let score = 0;
+      aliases.forEach((alias) => {
+        const a = normalize(alias);
+        if (!a) return;
+        if (q === a) score += 7;
+        else if (containsTerm(q, a)) score += a.includes(' ') ? 5 : 3;
+      });
+      if (score) hits.push({concept, score});
+    });
+    return hits.sort((a,b) => b.score - a.score);
+  };
+
+  const detectIntent = (question) => {
+    const q = normalize(question);
+    let winner = null, high = 0;
+    Object.entries(intentRules).forEach(([intent, patterns]) => {
+      let score = 0;
+      patterns.forEach((p) => {
+        const np = normalize(p);
+        if (np && containsTerm(q, np)) score += np.includes(' ') ? 4 : 2;
+      });
+      if (score > high) { high = score; winner = intent; }
+    });
+    return winner;
+  };
+
+  const isShortFollowUp = (question) => {
+    const q = normalize(question);
+    const starters = ['dar','si','și','iar','despre','and','also','what about','e','anche','y','tambien','también','und','auch','et','aussi','tambem','também','а','и','لكن','و'];
+    return !!lastContext && starters.some((s) => q === normalize(s) || q.startsWith(`${normalize(s)} `));
+  };
+
+  const siteChunksFor = (lang) => lang === currentLang
+    ? runtimeSiteChunks
+    : (SITE_INDEX[lang] || []).map((chunk) => ({...chunk, _source:'site'}));
+
+  // A lightweight lexical relevance check lets new topics already published on the
+  // site enter scope without requiring a hand-written alias for every possible question.
+  const siteScopeScore = (question, lang = currentLang) => {
+    const tokens = tokenise(question).filter((t) => !['alin','adrian','ivana','site','website'].includes(t));
+    if (!tokens.length) return 0;
+    let best = 0;
+    siteChunksFor(lang).forEach((chunk) => {
+      const hay = normalize(`${chunk.title || ''} ${chunk.text || ''}`);
+      const words = hay.split(' ');
+      let score = 0;
+      tokens.forEach((token) => {
+        if (words.includes(token)) score += 4;
+        else if (hay.includes(token)) score += 2;
+        else if (token.length >= 4 && words.some((word) => prefixMatch(word, token))) score += 1.4;
+      });
+      if (tokens.length > 1 && tokens.every((token) => hay.includes(token) || words.some((word) => prefixMatch(word, token)))) score += 3;
+      best = Math.max(best, score);
+    });
+    return best;
+  };
+
+  const isInScope = (question) => {
+    const q = normalize(question);
+    if (offTopicPatterns.some((term) => containsTerm(q, term))) return false;
+    if (scopeAnchors.some((term) => containsTerm(q, term))) return true;
+    const intent = detectIntent(question);
+    if (intent && intent !== 'about') return true;
+    if (intent === 'about') {
+      return ['alin','adrian','ivana'].some((name) => containsTerm(q, name)) ||
+        concepts.role.some((term) => containsTerm(q, term)) || isShortFollowUp(question);
+    }
+    if (siteScopeScore(question, currentLang) >= 6) return true;
+    return isShortFollowUp(question);
+  };
+
+  const shorten = (text, limit = 620) => {
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    if (value.length <= limit) return value;
+    const cut = value.slice(0, limit);
+    const sentence = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+    return (sentence > limit * .55 ? cut.slice(0, sentence + 1) : cut.replace(/\s+\S*$/, '')) + '…';
+  };
+
+  const prefixMatch = (a, b) => {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (a.length < 4 || b.length < 4) return false;
+    return a.startsWith(b) || b.startsWith(a);
+  };
+
+  const allChunks = Object.entries(DATA.knowledge).flatMap(([lang, chunks]) => chunks.map((chunk) => ({...chunk, lang, _source:'curated'})));
+
+  const chunkSearchText = (chunk) => normalize(`${chunk.title || ''} ${chunk.text || ''} ${chunk.route || ''} ${chunk.kind || ''}`);
+
+  const scoreChunk = (chunk, queryTokens, queryNorm, intent, preferredLang, conceptHits) => {
+    const title = normalize(chunk.title);
+    const text = normalize(chunk.text);
+    const haystack = `${title} ${text}`;
+    const words = new Set(haystack.split(' '));
+    let score = chunk.lang === preferredLang ? 4.5 : -2;
+    if (chunk._source === 'curated') score += 2.2;
+    if (chunk._source === 'site') score += .6;
+
+    // A heading that closely mirrors the visitor's wording is very strong evidence.
+    // This prevents generic curated aliases from outranking an exact section on the site.
+    const qCore = tokenise(queryNorm).filter((t) => !['alin','adrian','ivana'].includes(t));
+    if (queryNorm.length >= 8 && title && (` ${title} `).includes(` ${queryNorm} `)) score += 28;
+    else if (qCore.length >= 2 && title) {
+      const titleWords = title.split(' ');
+      const matchedTitleTerms = qCore.filter((t) => title.includes(t) || titleWords.some((w) => prefixMatch(w,t))).length;
+      if (matchedTitleTerms === qCore.length) score += 34;
+      else if (matchedTitleTerms >= 2 && matchedTitleTerms / qCore.length >= .6) score += 22;
+    }
+
+    queryTokens.forEach((token) => {
+      const isNameToken = ['alin','adrian','ivana'].includes(token);
+      if (title.split(' ').includes(token)) score += isNameToken ? 1 : 9;
+      else if (title.includes(token)) score += isNameToken ? .5 : 5;
+      if (words.has(token)) score += isNameToken ? .6 : 5;
+      else if (text.includes(token)) score += isNameToken ? .25 : 2;
+      else if (!isNameToken && [...words].some((word) => prefixMatch(word, token))) score += 1.6;
+    });
+
+    // Concept aliases are already expanded into queryTokens before ranking. Keeping
+    // scoring lexical here makes full-site search fast even on mobile devices.
+
+    if (intent && chunk.route === intent) score += 10;
+    if (intent === 'about' && (chunk.kind === 'profile' || chunk.route === 'about')) score += 12;
+    if (intent === 'learning' && chunk.kind === 'learning') score += 13;
+    if (intent === 'contact' && chunk.kind === 'contact') score += 14;
+    if (intent === 'skills' && chunk.kind === 'skill') score += 10;
+    if (intent === 'projects' && chunk.kind === 'project') score += 10;
+    if (intent === 'education' && chunk.route === 'about') score += 8;
+    if (intent === 'experience' && chunk.route === 'about' && ['experience','service','profile'].includes(chunk.kind)) score += 8;
+    if (intent === 'services' && ['service','contact'].includes(chunk.kind)) score += 9;
+
+    if (lastContext && isShortFollowUp(queryNorm)) {
+      if (chunk.route === lastContext.route) score += 2.5;
+    }
+    return score;
+  };
+
+  const localizedChunks = (lang) => (DATA.knowledge[lang] || DATA.knowledge[currentLang] || DATA.knowledge.en || []).map((chunk) => ({...chunk, lang, _source:'curated'}));
+  const searchableChunks = (lang) => [...localizedChunks(lang), ...siteChunksFor(lang)];
+
+  const aggregateIntent = (intent, lang) => {
+    const chunks = localizedChunks(lang);
+    let selected = [];
+    let limit = 5;
+    let itemLimit = 210;
+    if (intent === 'projects') selected = chunks.filter((c) => c.kind === 'project' && c.route === 'projects');
+    if (intent === 'skills') { selected = chunks.filter((c) => c.kind === 'skill' && c.route === 'skills'); limit = 8; itemLimit = 130; }
+    if (intent === 'experience') { selected = chunks.filter((c) => c.route === 'about' && c.kind === 'service' && ['cnc','experien','comunic','international','internation','logistic','transport','supervisor','call center'].some((term) => containsTerm(`${c.title} ${c.text}`, term))); limit = 5; itemLimit = 190; }
+    if (intent === 'services') { selected = chunks.filter((c) => c.kind === 'service' && (c.route === 'contact' || c.route === 'home')); limit = 4; itemLimit = 170; }
+    if (!selected.length) return null;
+    const seen = new Set();
+    selected = selected.filter((c) => {
+      const key = normalize(c.title);
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+    const items = selected.slice(0, limit).map((c) => `• ${shorten(c.text, itemLimit)}`).join('\n');
+    return { text: items, source: selected[0] };
+  };
+
+  const specificTechnologyAsked = (question) => {
+    const q = normalize(question);
+    return Object.entries(technologyTerms)
+      .filter(([,aliases]) => aliases.some((a) => containsTerm(q, a)))
+      .map(([tech]) => tech);
+  };
+
+  const findPublishedTechnology = (techs, lang) => {
+    if (!techs.length) return null;
+    const chunks = searchableChunks(lang);
+    const aliases = techs.flatMap((t) => technologyTerms[t] || []);
+    const ranked = chunks
+      .map((chunk) => {
+        const hay = chunkSearchText(chunk);
+        const matches = aliases.filter((a) => containsTerm(hay, a)).length;
+        return {chunk, matches};
+      })
+      .filter((x) => x.matches > 0)
+      .sort((a,b) => b.matches - a.matches || (a.chunk.kind === 'skill' ? -1 : 1));
+    return ranked[0]?.chunk || null;
+  };
+
+  const asksPrivateFact = (question) => {
+    const q = normalize(question);
+    return privateFactPatterns.some((p) => containsTerm(q, p));
+  };
+
+  const responseWithSource = (text, source, lang) => {
+    if (source) lastContext = {route:source.route, kind:source.kind, title:source.title, lang};
+    return {text, source, lang};
+  };
+
+  const answerQuestion = (question) => {
+    // The selected website language is authoritative for every assistant reply.
+    // This keeps the greeting, profile answers, source labels and fallback messages
+    // synchronized when the visitor changes the site's language.
+    const preferredLang = currentLang;
+    const responseUI = DATA.i18n[preferredLang] || ui;
+    const qNorm = normalize(question);
+
+    if (!isInScope(question)) return { text: responseUI.out, lang: preferredLang };
+    if (asksPrivateFact(question)) return { text: responseUI.unknown, lang: preferredLang };
+
+    const intent = detectIntent(question);
+    const conceptHits = matchConcepts(question);
+    const techs = specificTechnologyAsked(question);
+
+    // Questions such as "Știe Python?", "Does he know Django?", "Lavora con MySQL?"
+    // are answered only when that technology is explicitly present in published site content.
+    if (techs.length && intent !== 'learning') {
+      const techChunk = findPublishedTechnology(techs, preferredLang);
+      if (techChunk) return responseWithSource(`${responseUI.intro}\n${shorten(techChunk.text)}`, techChunk, preferredLang);
+      return { text: responseUI.unknown, lang: preferredLang };
+    }
+
+    if (intent === 'about') {
+      const chunks = localizedChunks(preferredLang);
+      const profile = chunks.find((c) => c.route === 'about' && c.kind === 'profile' && containsTerm(c.title, 'Alin')) ||
+        chunks.find((c) => c.route === 'about' && c.kind === 'summary') ||
+        chunks.find((c) => c.route === 'about' && c.kind === 'profile');
+      if (profile) return responseWithSource(`${responseUI.intro}\n${shorten(profile.text)}`, profile, preferredLang);
+    }
+
+    if (intent === 'education') {
+      const chunks = localizedChunks(preferredLang);
+      const edu = chunks.find((c) => c.route === 'about' && containsTerm(c.text, 'LINK Academy')) ||
+        chunks.find((c) => c.route === 'about' && c.kind === 'profile');
+      if (edu) return responseWithSource(`${responseUI.intro}\n${shorten(edu.text)}`, edu, preferredLang);
+    }
+
+    if (['projects','skills','experience','services'].includes(intent)) {
+      const aggregate = aggregateIntent(intent, preferredLang);
+      const specificConcepts = conceptHits.filter((x) => ![intent,'identity','role'].includes(x.concept));
+      if (aggregate && !specificConcepts.length) {
+        return responseWithSource(`${responseUI.intro}\n${aggregate.text}`, aggregate.source, preferredLang);
+      }
+    }
+
+    const tokens = tokenise(question);
+    const enrichedTokens = new Set(tokens);
+    conceptHits.slice(0,4).forEach(({concept}) => {
+      (concepts[concept] || []).slice(0,8).forEach((alias) => tokenise(alias).forEach((t) => enrichedTokens.add(t)));
+    });
+
+    // Short follow-ups can inherit the previous route, but never its factual content.
+    if (isShortFollowUp(question) && lastContext) enrichedTokens.add(normalize(lastContext.route));
+
+    const queryTokens = [...enrichedTokens];
+    const ranked = searchableChunks(preferredLang).map((chunk) => ({...chunk, lang: preferredLang}))
+      .map((chunk) => ({ chunk, score: scoreChunk(chunk, queryTokens, qNorm, intent, preferredLang, conceptHits) }))
+      .sort((a,b) => b.score - a.score);
+
+    const best = ranked[0];
+    const second = ranked[1];
+    const minScore = queryTokens.length <= 1 ? 9 : 12;
+    if (!best || best.score < minScore) return { text: responseUI.unknown, lang: preferredLang };
+
+    // Require meaningful evidence. A match on the name alone is never enough.
+    const informative = tokens.filter((t) => !['alin','adrian','ivana'].includes(t));
+    const bestText = chunkSearchText(best.chunk);
+    const evidence = informative.filter((token) => bestText.includes(token) || bestText.split(' ').some((word) => prefixMatch(word, token)));
+    const hasIntentEvidence = !!intent || conceptHits.some((h) => h.concept !== 'identity');
+    if (informative.length && evidence.length === 0 && !hasIntentEvidence) return { text: responseUI.unknown, lang: preferredLang };
+
+    // Avoid answering from a weak ambiguous match when two unrelated chunks score similarly.
+    if (!intent && !conceptHits.length && second && best.score - second.score < .8 && best.score < 18) {
+      return { text: responseUI.unknown, lang: preferredLang };
+    }
+
+    return responseWithSource(`${responseUI.intro}\n${shorten(best.chunk.text)}`, best.chunk, preferredLang);
+  };
+
+  const extractLiveChunks = (html, path, pageMeta = {}) => {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const main = doc.querySelector('main');
+      if (!main) return [];
+      main.querySelectorAll('script,style,noscript,svg').forEach((el) => el.remove());
+      const page = (doc.querySelector('title')?.textContent || pageMeta.page || path).replace(/\s+/g,' ').trim();
+      const route = pageMeta.route || 'site';
+      const blocks = [];
+      const seen = new Set();
+      main.querySelectorAll('section,article').forEach((container) => {
+        const heading = (container.querySelector('h1,h2,h3,h4')?.textContent || page).replace(/\s+/g,' ').trim();
+        const bits = [...container.querySelectorAll('p,li')].map((el) => el.textContent.replace(/\s+/g,' ').trim()).filter((t) => t.length >= 20);
+        if (!bits.length) {
+          const text = container.textContent.replace(/\s+/g,' ').trim();
+          if (text.length >= 40) bits.push(text);
+        }
+        let buffer = '';
+        const flush = () => {
+          const text = buffer.trim(); buffer = '';
+          if (!text || seen.has(text)) return;
+          seen.add(text);
+          blocks.push({title:heading,text:shorten(text,760),page,url:path,path,route,kind:'site',lang:currentLang,_source:'site'});
+        };
+        bits.forEach((bit) => {
+          if (buffer && buffer.length + bit.length > 650) flush();
+          buffer += `${buffer ? ' ' : ''}${bit}`;
+        });
+        flush();
+      });
+      return blocks;
+    } catch (_) { return []; }
+  };
+
+  const refreshSiteIndexFromPublishedPages = async () => {
+    // Offline/file:// mode uses the bundled index. On the published site we refresh
+    // the same-language public pages in the visitor's browser, so future text edits
+    // become searchable without an AI API or server-side chatbot.
+    if (!/^https?:$/.test(location.protocol) || typeof fetch !== 'function') return;
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(liveIndexStorageKey) || 'null');
+      if (cached && Array.isArray(cached.chunks) && Date.now() - Number(cached.savedAt || 0) < 30 * 60 * 1000) {
+        runtimeSiteChunks = cached.chunks.map((c) => ({...c,_source:'site'}));
+        return;
+      }
+    } catch (_) {}
+
+    const base = SITE_INDEX[currentLang] || [];
+    const pages = [];
+    const seen = new Set();
+    const addPage = (path, page = path, route = 'site') => {
+      if (!path || seen.has(path) || !path.endsWith('/') && !/\.html$/i.test(path)) return;
+      seen.add(path);
+      pages.push({path,page,route});
+    };
+    base.forEach((chunk) => addPage(chunk.path || chunk.url, chunk.page, chunk.route));
+
+    // Discover newly added public pages from sitemap.xml as well. This means adding a
+    // new page to the sitemap does not require adding a new fixed question to the bot.
+    try {
+      const sitemapResponse = await fetch(new URL('/sitemap.xml', location.origin).href, {credentials:'same-origin',cache:'no-cache'});
+      if (sitemapResponse.ok) {
+        const xml = new DOMParser().parseFromString(await sitemapResponse.text(), 'application/xml');
+        const languagePrefixes = ['en','it','es','tr','de','ru','fr','pt','ar'];
+        [...xml.querySelectorAll('loc')].forEach((node) => {
+          try {
+            const u = new URL(node.textContent.trim(), location.origin);
+            const path = u.pathname || '/';
+            const first = path.split('/').filter(Boolean)[0] || '';
+            const sameLanguage = currentLang === 'ro' ? !languagePrefixes.includes(first) : first === currentLang;
+            if (sameLanguage) addPage(path);
+          } catch (_) {}
+        });
+      }
+    } catch (_) {}
+
+    if (!pages.length) return;
+
+    const responses = await Promise.allSettled(pages.map(async (meta) => {
+      const target = new URL(meta.path, location.origin);
+      if (target.origin !== location.origin) return [];
+      const response = await fetch(target.href, {credentials:'same-origin',cache:'no-cache'});
+      if (!response.ok) return [];
+      return extractLiveChunks(await response.text(), meta.path, meta);
+    }));
+    const live = responses.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
+    if (live.length >= Math.max(5, Math.floor(base.length * .2))) {
+      runtimeSiteChunks = live;
+      try { sessionStorage.setItem(liveIndexStorageKey, JSON.stringify({savedAt:Date.now(),chunks:live})); } catch (_) {}
+    }
+  };
+
+  // Fire-and-forget: answers are immediately available from the bundled index;
+  // this refresh only keeps it synchronized with the currently published pages.
+  refreshSiteIndexFromPublishedPages();
+
+  const create = (tag, className, attrs = {}) => {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    Object.entries(attrs).forEach(([name, value]) => {
+      if (name === 'text') el.textContent = value;
+      else el.setAttribute(name, value);
+    });
+    return el;
+  };
+
+  const root = create('div','aa-chatbot-root');
+  root.dir = isRTL ? 'rtl' : 'ltr';
+
+  const launcher = create('button','aa-chatbot-launcher',{
+    type:'button','aria-label':ui.title,'aria-expanded':'false','aria-controls':'aa-chatbot-panel'
+  });
+  launcher.innerHTML = '<span class="aa-chatbot-launcher-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5.8A2.8 2.8 0 0 1 6.8 3h10.4A2.8 2.8 0 0 1 20 5.8v7.4a2.8 2.8 0 0 1-2.8 2.8H11l-4.6 3.7c-.6.5-1.4 0-1.3-.8l.5-2.9A2.8 2.8 0 0 1 4 13.2V5.8Z"/><path d="M8 8h8M8 11.5h5.5" class="aa-chatbot-svg-lines"/></svg></span><span class="aa-chatbot-launcher-dot" aria-hidden="true"></span>';
+
+  const panel = create('section','aa-chatbot-panel',{'id':'aa-chatbot-panel','aria-label':ui.title,'aria-hidden':'true'});
+  const header = create('header','aa-chatbot-header');
+  const identity = create('div','aa-chatbot-identity');
+  const avatar = create('div','aa-chatbot-avatar',{'aria-hidden':'true','text':'AAI'});
+  const headingWrap = create('div','aa-chatbot-heading');
+  const title = create('strong','',{'text':ui.title});
+  const scope = create('span','',{'text':ui.scope});
+  headingWrap.append(title, scope);
+  identity.append(avatar, headingWrap);
+  const headerActions = create('div','aa-chatbot-header-actions');
+  const resetBtn = create('button','aa-chatbot-icon-btn',{type:'button','aria-label':ui.reset,title:ui.reset});
+  resetBtn.innerHTML = '<span aria-hidden="true">↻</span>';
+  const closeBtn = create('button','aa-chatbot-icon-btn',{type:'button','aria-label':ui.close,title:ui.close});
+  closeBtn.innerHTML = '<span aria-hidden="true">×</span>';
+  headerActions.append(resetBtn, closeBtn);
+  header.append(identity, headerActions);
+
+  // The visitor starts with a clean chat: no API/local-status banner and no
+  // predefined question chips. They can type any question about Alin or the site.
+  const messages = create('div','aa-chatbot-messages',{'role':'log','aria-live':'polite','aria-relevant':'additions'});
+
+  const form = create('form','aa-chatbot-form');
+  const input = create('input','aa-chatbot-input',{type:'text',placeholder:ui.placeholder,autocomplete:'off','aria-label':ui.placeholder,maxlength:'240'});
+  const send = create('button','aa-chatbot-send',{type:'submit','aria-label':ui.send,title:ui.send});
+  send.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 17 8-17 8 3-8-3-8Zm3.6 7h8.1L6.8 6.8 7.6 11Zm-.8 6.2 8.9-4.2H7.6l-.8 4.2Z"/></svg>';
+  form.append(input, send);
+  panel.append(header, messages, form);
+  root.append(panel, launcher);
+  document.body.appendChild(root);
+
+  // History is stored separately for each site language. Older v3 history is
+  // deliberately not reused, because it could show Romanian messages after
+  // switching to Italian (or another language).
+  let history = [];
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+    if (Array.isArray(saved)) history = saved.slice(-maxMessages);
+  } catch (_) { history = []; }
+
+  const saveHistory = () => {
+    try { sessionStorage.setItem(storageKey, JSON.stringify(history.slice(-maxMessages))); } catch (_) {}
+  };
+
+  const addMessage = (role, text, source = null, persist = true) => {
+    const item = create('div',`aa-chatbot-message aa-chatbot-message-${role}`);
+    const bubble = create('div','aa-chatbot-bubble');
+    const content = create('div','aa-chatbot-text',{'text':text});
+    bubble.appendChild(content);
+    if (source && source.url) {
+      const sourceLink = create('a','aa-chatbot-source',{href:source.url});
+      const sourceUI = DATA.i18n[source.lang || currentLang] || ui;
+      sourceLink.textContent = `${sourceUI.source}: ${source.page || source.title || source.url}`;
+      bubble.appendChild(sourceLink);
+    }
+    item.appendChild(bubble);
+    messages.appendChild(item);
+    messages.scrollTop = messages.scrollHeight;
+    if (persist) {
+      history.push({role,text,source:source ? {url:source.url,page:source.page,title:source.title,lang:source.lang} : null});
+      history = history.slice(-maxMessages);
+      saveHistory();
+    }
+  };
+
+  if (history.length) {
+    history.forEach((m) => addMessage(m.role, m.text, m.source, false));
+  } else {
+    addMessage('assistant', ui.welcome, null, true);
+  }
+
+  function submit(raw) {
+    const question = String(raw || input.value || '').trim();
+    if (!question) return;
+    addMessage('user', question);
+    input.value = '';
+    input.disabled = true;
+    send.disabled = true;
+    window.setTimeout(() => {
+      const result = answerQuestion(question);
+      const source = result.source ? {...result.source, lang: result.lang} : null;
+      addMessage('assistant', result.text, source);
+      input.disabled = false;
+      send.disabled = false;
+      input.focus();
+    }, 180);
+  }
+
+  const setOpen = (open) => {
+    panel.classList.toggle('open', open);
+    launcher.classList.toggle('open', open);
+    panel.setAttribute('aria-hidden', String(!open));
+    launcher.setAttribute('aria-expanded', String(open));
+    if (open) window.setTimeout(() => input.focus(), 60);
+  };
+
+  launcher.addEventListener('click', () => setOpen(!panel.classList.contains('open')));
+  closeBtn.addEventListener('click', () => setOpen(false));
+  resetBtn.addEventListener('click', () => {
+    history = [];
+    saveHistory();
+    messages.textContent = '';
+    addMessage('assistant', ui.welcome, null, true);
+    input.focus();
+  });
+  form.addEventListener('submit', (event) => { event.preventDefault(); submit(); });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && panel.classList.contains('open')) setOpen(false);
+  });
+})();
