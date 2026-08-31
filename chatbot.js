@@ -1,5 +1,5 @@
 /*
- * AlinAdrian.dev — local zero-cost chatbot v6
+ * AlinAdrian.dev — local zero-cost chatbot v7
  * - 100% client-side; no OpenAI/API calls.
  * - Answers only from the curated knowledge base plus a local index of the public website.
  * - Understands natural-language variants through aliases, intents, fuzzy matching and full-site local retrieval.
@@ -15,11 +15,12 @@
   const currentLang = DATA.i18n[pageLang] ? pageLang : 'en';
   const ui = DATA.i18n[currentLang] || DATA.i18n.en;
   const isRTL = currentLang === 'ar';
-  const storageKey = `aa-local-chatbot-v6-${currentLang}`;
-  const liveIndexStorageKey = `aa-local-site-index-v6-${currentLang}-${location.hostname || 'offline'}`;
+  const storageKey = `aa-local-chatbot-v7-${currentLang}`;
+  const liveIndexStorageKey = `aa-local-site-index-v7-${currentLang}-${location.hostname || 'offline'}`;
   let runtimeSiteChunks = (SITE_INDEX[currentLang] || []).map((chunk) => ({...chunk, _source:'site'}));
-  const maxMessages = 28;
+  const maxMessages = 40;
   let lastContext = null;
+  let corpusCache = null;
 
   const normalize = (value) => String(value || '')
     .toLowerCase()
@@ -209,6 +210,7 @@
         if (words.includes(token)) score += 4;
         else if (hay.includes(token)) score += 2;
         else if (token.length >= 4 && words.some((word) => prefixMatch(word, token))) score += 1.4;
+        else if (token.length >= 5 && words.slice(0,220).some((word) => tokenSimilarity(word, token) >= .76)) score += 1.15;
       });
       if (tokens.length > 1 && tokens.every((token) => hay.includes(token) || words.some((word) => prefixMatch(word, token)))) score += 3;
       best = Math.max(best, score);
@@ -220,6 +222,9 @@
     const q = normalize(question);
     if (offTopicPatterns.some((term) => containsTerm(q, term))) return false;
     if (scopeAnchors.some((term) => containsTerm(q, term))) return true;
+    const qTokens = tokenise(q);
+    const anchorTokens = scopeAnchors.flatMap((term) => normalize(term).split(' ')).filter((token) => token.length >= 5);
+    if (qTokens.some((token) => token.length >= 5 && anchorTokens.some((anchor) => tokenSimilarity(token, anchor) >= .78))) return true;
     const intent = detectIntent(question);
     if (intent && intent !== 'about') return true;
     if (intent === 'about') {
@@ -245,6 +250,154 @@
     return a.startsWith(b) || b.startsWith(a);
   };
 
+
+  // V7 local retrieval: BM25-style weighting + typo tolerance + extractive synthesis.
+  // Everything runs in the browser and uses only public site text; no AI/API request is made.
+  const editDistance = (a, b) => {
+    a = String(a || ''); b = String(b || '');
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const prev = Array.from({length:b.length + 1}, (_, i) => i);
+    const curr = new Array(b.length + 1);
+    for (let i = 1; i <= a.length; i += 1) {
+      curr[0] = i;
+      for (let j = 1; j <= b.length; j += 1) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+      }
+      for (let j = 0; j <= b.length; j += 1) prev[j] = curr[j];
+    }
+    return prev[b.length];
+  };
+
+  const tokenSimilarity = (a, b) => {
+    a = normalize(a); b = normalize(b);
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (prefixMatch(a,b)) return .9;
+    if (Math.abs(a.length - b.length) > 3 || Math.max(a.length,b.length) > 26) return 0;
+    const distance = editDistance(a,b);
+    return 1 - (distance / Math.max(a.length,b.length));
+  };
+
+  const sentenceSplit = (text) => {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!clean) return [];
+    const parts = clean.replace(/([.!?。！？])\s+/gu, '$1\u0000').split('\u0000');
+    return parts.map((x) => x.trim()).filter((x) => x.length >= 18);
+  };
+
+  const buildCorpusStats = (lang) => {
+    const chunks = searchableChunks(lang);
+    if (corpusCache && corpusCache.lang === lang && corpusCache.count === chunks.length && corpusCache.siteRef === runtimeSiteChunks) return corpusCache;
+    const df = new Map();
+    const vocabulary = new Map();
+    let totalLength = 0;
+    const docs = chunks.map((chunk) => {
+      const tokens = tokenise(chunkSearchText(chunk));
+      totalLength += tokens.length;
+      const tf = new Map();
+      tokens.forEach((token) => {
+        tf.set(token, (tf.get(token) || 0) + 1);
+        vocabulary.set(token, (vocabulary.get(token) || 0) + 1);
+      });
+      new Set(tokens).forEach((token) => df.set(token, (df.get(token) || 0) + 1));
+      return {chunk, tf, length:Math.max(1,tokens.length)};
+    });
+    corpusCache = {
+      lang, count:chunks.length, siteRef:runtimeSiteChunks, docs, df, vocabulary,
+      avgLength: Math.max(1, totalLength / Math.max(1, docs.length)),
+      total: Math.max(1, docs.length)
+    };
+    return corpusCache;
+  };
+
+  const fuzzyCorrectTokens = (tokens, lang) => {
+    const stats = buildCorpusStats(lang);
+    const vocabulary = [...stats.vocabulary.keys()];
+    return tokens.map((token) => {
+      if (stats.vocabulary.has(token) || token.length < 4) return token;
+      let best = token, bestScore = 0;
+      for (const candidate of vocabulary) {
+        if (Math.abs(candidate.length - token.length) > 2) continue;
+        if (candidate[0] !== token[0] && token.length < 7) continue;
+        const sim = tokenSimilarity(token, candidate);
+        if (sim > bestScore) { bestScore = sim; best = candidate; }
+      }
+      return bestScore >= (token.length <= 5 ? .78 : .72) ? best : token;
+    });
+  };
+
+  const bm25Score = (chunk, queryTokens, lang) => {
+    const stats = buildCorpusStats(lang);
+    const entry = stats.docs.find((doc) => doc.chunk === chunk || (doc.chunk.title === chunk.title && doc.chunk.text === chunk.text));
+    if (!entry) return 0;
+    const k1 = 1.35, b = .72;
+    let score = 0;
+    [...new Set(queryTokens)].forEach((token) => {
+      const freq = entry.tf.get(token) || 0;
+      if (!freq) return;
+      const n = stats.df.get(token) || 0;
+      const idf = Math.log(1 + (stats.total - n + .5) / (n + .5));
+      const denom = freq + k1 * (1 - b + b * entry.length / stats.avgLength);
+      score += idf * (freq * (k1 + 1) / denom);
+    });
+    return score;
+  };
+
+  const multiSourceAnswer = (ranked, queryTokens, lang) => {
+    if (!ranked.length) return null;
+    const top = ranked[0].score;
+    const candidates = ranked.slice(0,6).filter((item) => item.score >= Math.max(10, top * .58));
+    const scored = [];
+    candidates.forEach((item, rank) => {
+      sentenceSplit(item.chunk.text).forEach((sentence) => {
+        const norm = normalize(sentence);
+        const words = norm.split(' ');
+        let score = Math.max(0, 4 - rank) + item.score * .04;
+        queryTokens.forEach((token) => {
+          if (words.includes(token)) score += 3.2;
+          else if (words.some((w) => prefixMatch(w,token))) score += 1.8;
+          else if (token.length >= 5 && words.slice(0,90).some((w) => tokenSimilarity(w,token) >= .78)) score += .9;
+        });
+        scored.push({sentence, norm, score, chunk:item.chunk});
+      });
+    });
+    scored.sort((a,b) => b.score - a.score);
+    const picked = [], seen = [];
+    for (const item of scored) {
+      if (picked.length >= 3) break;
+      if (seen.some((s) => s === item.norm || (s.length > 45 && item.norm.includes(s)) || (item.norm.length > 45 && s.includes(item.norm)))) continue;
+      picked.push(item); seen.push(item.norm);
+    }
+    if (!picked.length) return null;
+    const text = shorten(picked.map((x) => x.sentence).join(' '), 760);
+    const sources = [];
+    picked.forEach((x) => {
+      if (x.chunk?.url && !sources.some((s) => s.url === x.chunk.url)) sources.push(x.chunk);
+    });
+    return {text, sources:sources.slice(0,3)};
+  };
+
+  const extraUI = {
+    ro:{help:'Pot răspunde despre profilul profesional al lui Alin, competențe, proiecte, experiență, studii, servicii și contact. Caut local în conținutul public al site-ului, inclusiv cu toleranță la greșeli de tastare și întrebări de continuare. Nu folosesc API AI extern și nu inventez date nepublicate.'},
+    en:{help:'I can answer about Alin’s professional profile, skills, projects, experience, education, services and contact options. I search the public website locally, including typo-tolerant and follow-up queries. I use no external AI API and do not invent unpublished facts.'},
+    it:{help:'Posso rispondere sul profilo professionale di Alin, competenze, progetti, esperienza, formazione, servizi e contatti. Cerco localmente nei contenuti pubblici del sito, anche con errori di digitazione e domande successive. Non uso API AI esterne e non invento dati non pubblicati.'},
+    es:{help:'Puedo responder sobre el perfil profesional de Alin, habilidades, proyectos, experiencia, formación, servicios y contacto. Busco localmente en el contenido público del sitio, incluso con errores de escritura y preguntas de seguimiento. No uso una API de IA externa ni invento datos no publicados.'},
+    tr:{help:'Alin’in profesyonel profili, becerileri, projeleri, deneyimi, eğitimi, hizmetleri ve iletişim seçenekleri hakkında yanıt verebilirim. Yazım hatalarına ve takip sorularına toleranslı olarak sitenin herkese açık içeriğinde yerel arama yaparım. Harici AI API kullanmam ve yayımlanmamış bilgi uydurmam.'},
+    de:{help:'Ich kann Fragen zu Alins beruflichem Profil, Kompetenzen, Projekten, Erfahrung, Ausbildung, Leistungen und Kontakt beantworten. Ich durchsuche die öffentlichen Website-Inhalte lokal, auch fehlertolerant und mit Folgefragen. Ich nutze keine externe KI-API und erfinde keine unveröffentlichten Angaben.'},
+    ru:{help:'Я могу отвечать о профессиональном профиле Алина, навыках, проектах, опыте, обучении, услугах и контактах. Поиск выполняется локально по публичному содержимому сайта, с учётом опечаток и уточняющих вопросов. Внешний AI API не используется, непубличные данные не выдумываются.'},
+    fr:{help:'Je peux répondre sur le profil professionnel d’Alin, ses compétences, projets, expérience, formation, services et moyens de contact. La recherche se fait localement dans le contenu public du site, avec tolérance aux fautes et aux questions de suivi. Aucune API IA externe n’est utilisée et je n’invente pas d’informations non publiées.'},
+    pt:{help:'Posso responder sobre o perfil profissional de Alin, competências, projetos, experiência, formação, serviços e contacto. Pesquiso localmente no conteúdo público do site, com tolerância a erros de digitação e perguntas de seguimento. Não uso API externa de IA nem invento dados não publicados.'},
+    ar:{help:'يمكنني الإجابة عن الملف المهني لألين ومهاراته ومشاريعه وخبرته وتدريبه وخدماته ووسائل التواصل. يتم البحث محليًا داخل المحتوى العام للموقع مع تحمّل أخطاء الكتابة والأسئلة المتتابعة. لا أستخدم واجهة ذكاء اصطناعي خارجية ولا أختلق معلومات غير منشورة.'}
+  };
+
+  const greetingTerms = ['salut','buna','bună','hello','hi','hey','ciao','hola','merhaba','hallo','bonjour','olá','ola','привет','здравствуйте','مرحبا','أهلا'];
+  const helpTerms = ['ce poti face','ce poți face','cum ma poti ajuta','what can you do','how can you help','cosa puoi fare','come puoi aiutarmi','que puedes hacer','qué puedes hacer','ne yapabilirsin','was kannst du','что ты умеешь','que peux tu faire','o que podes fazer','ماذا يمكنك أن تفعل'];
+  const isGreeting = (q) => greetingTerms.some((term) => normalize(q) === normalize(term) || normalize(q).startsWith(`${normalize(term)} `));
+  const asksHelp = (q) => helpTerms.some((term) => containsTerm(q, term));
+
   const allChunks = Object.entries(DATA.knowledge).flatMap(([lang, chunks]) => chunks.map((chunk) => ({...chunk, lang, _source:'curated'})));
 
   const chunkSearchText = (chunk) => normalize(`${chunk.title || ''} ${chunk.text || ''} ${chunk.route || ''} ${chunk.kind || ''}`);
@@ -257,6 +410,7 @@
     let score = chunk.lang === preferredLang ? 4.5 : -2;
     if (chunk._source === 'curated') score += 2.2;
     if (chunk._source === 'site') score += .6;
+    score += bm25Score(chunk, queryTokens, preferredLang) * 2.4;
 
     // A heading that closely mirrors the visitor's wording is very strong evidence.
     // This prevents generic curated aliases from outranking an exact section on the site.
@@ -347,10 +501,13 @@
     return privateFactPatterns.some((p) => containsTerm(q, p));
   };
 
-  const responseWithSource = (text, source, lang) => {
-    if (source) lastContext = {route:source.route, kind:source.kind, title:source.title, lang};
-    return {text, source, lang};
+  const responseWithSources = (text, sources, lang, keywords = []) => {
+    const list = (Array.isArray(sources) ? sources : [sources]).filter(Boolean);
+    const source = list[0] || null;
+    if (source) lastContext = {route:source.route, kind:source.kind, title:source.title, lang, keywords:[...new Set(keywords)].slice(0,8)};
+    return {text, source, sources:list.slice(0,3), lang};
   };
+  const responseWithSource = (text, source, lang, keywords = []) => responseWithSources(text, source ? [source] : [], lang, keywords);
 
   const answerQuestion = (question) => {
     // The selected website language is authoritative for every assistant reply.
@@ -359,6 +516,9 @@
     const preferredLang = currentLang;
     const responseUI = DATA.i18n[preferredLang] || ui;
     const qNorm = normalize(question);
+
+    if (isGreeting(question)) return { text: responseUI.welcome, lang: preferredLang };
+    if (asksHelp(question)) return { text: (extraUI[preferredLang] || extraUI.en).help, lang: preferredLang };
 
     if (!isInScope(question)) return { text: responseUI.out, lang: preferredLang };
     if (asksPrivateFact(question)) return { text: responseUI.unknown, lang: preferredLang };
@@ -399,13 +559,17 @@
     }
 
     const tokens = tokenise(question);
-    const enrichedTokens = new Set(tokens);
+    const correctedTokens = fuzzyCorrectTokens(tokens, preferredLang);
+    const enrichedTokens = new Set([...tokens, ...correctedTokens]);
     conceptHits.slice(0,4).forEach(({concept}) => {
       (concepts[concept] || []).slice(0,8).forEach((alias) => tokenise(alias).forEach((t) => enrichedTokens.add(t)));
     });
 
     // Short follow-ups can inherit the previous route, but never its factual content.
-    if (isShortFollowUp(question) && lastContext) enrichedTokens.add(normalize(lastContext.route));
+    if (isShortFollowUp(question) && lastContext) {
+      enrichedTokens.add(normalize(lastContext.route));
+      (lastContext.keywords || []).slice(0,5).forEach((token) => enrichedTokens.add(token));
+    }
 
     const queryTokens = [...enrichedTokens];
     const ranked = searchableChunks(preferredLang).map((chunk) => ({...chunk, lang: preferredLang}))
@@ -420,7 +584,8 @@
     // Require meaningful evidence. A match on the name alone is never enough.
     const informative = tokens.filter((t) => !['alin','adrian','ivana'].includes(t));
     const bestText = chunkSearchText(best.chunk);
-    const evidence = informative.filter((token) => bestText.includes(token) || bestText.split(' ').some((word) => prefixMatch(word, token)));
+    const evidenceTokens = [...new Set([...informative, ...correctedTokens.filter((t) => !['alin','adrian','ivana'].includes(t))])];
+    const evidence = evidenceTokens.filter((token) => bestText.includes(token) || bestText.split(' ').some((word) => prefixMatch(word, token) || (token.length >= 5 && tokenSimilarity(word, token) >= .76)));
     const hasIntentEvidence = !!intent || conceptHits.some((h) => h.concept !== 'identity');
     if (informative.length && evidence.length === 0 && !hasIntentEvidence) return { text: responseUI.unknown, lang: preferredLang };
 
@@ -429,7 +594,11 @@
       return { text: responseUI.unknown, lang: preferredLang };
     }
 
-    return responseWithSource(`${responseUI.intro}\n${shorten(best.chunk.text)}`, best.chunk, preferredLang);
+    const synthesis = (queryTokens.length >= 3 || conceptHits.length >= 2) ? multiSourceAnswer(ranked, queryTokens, preferredLang) : null;
+    if (synthesis && synthesis.text && synthesis.text.length >= 45) {
+      return responseWithSources(`${responseUI.intro}\n${synthesis.text}`, synthesis.sources.length ? synthesis.sources : [best.chunk], preferredLang, queryTokens);
+    }
+    return responseWithSource(`${responseUI.intro}\n${shorten(best.chunk.text)}`, best.chunk, preferredLang, queryTokens);
   };
 
   const extractLiveChunks = (html, path, pageMeta = {}) => {
@@ -444,7 +613,7 @@
       const seen = new Set();
       main.querySelectorAll('section,article').forEach((container) => {
         const heading = (container.querySelector('h1,h2,h3,h4')?.textContent || page).replace(/\s+/g,' ').trim();
-        const bits = [...container.querySelectorAll('p,li')].map((el) => el.textContent.replace(/\s+/g,' ').trim()).filter((t) => t.length >= 20);
+        const bits = [...container.querySelectorAll('p,li,.contact-phone-label')].map((el) => el.textContent.replace(/\s+/g,' ').trim()).filter((t) => t.length >= 20);
         if (!bits.length) {
           const text = container.textContent.replace(/\s+/g,' ').trim();
           if (text.length >= 40) bits.push(text);
@@ -475,6 +644,7 @@
       const cached = JSON.parse(sessionStorage.getItem(liveIndexStorageKey) || 'null');
       if (cached && Array.isArray(cached.chunks) && Date.now() - Number(cached.savedAt || 0) < 30 * 60 * 1000) {
         runtimeSiteChunks = cached.chunks.map((c) => ({...c,_source:'site'}));
+        corpusCache = null;
         return;
       }
     } catch (_) {}
@@ -520,6 +690,7 @@
     const live = responses.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
     if (live.length >= Math.max(5, Math.floor(base.length * .2))) {
       runtimeSiteChunks = live;
+      corpusCache = null;
       try { sessionStorage.setItem(liveIndexStorageKey, JSON.stringify({savedAt:Date.now(),chunks:live})); } catch (_) {}
     }
   };
@@ -594,17 +765,20 @@
     const bubble = create('div','aa-chatbot-bubble');
     const content = create('div','aa-chatbot-text',{'text':text});
     bubble.appendChild(content);
-    if (source && source.url) {
-      const sourceLink = create('a','aa-chatbot-source',{href:source.url});
-      const sourceUI = DATA.i18n[source.lang || currentLang] || ui;
-      sourceLink.textContent = `${sourceUI.source}: ${source.page || source.title || source.url}`;
+    const sourceList = (Array.isArray(source) ? source : (source ? [source] : []))
+      .filter((s, index, arr) => s && s.url && arr.findIndex((x) => x?.url === s.url) === index)
+      .slice(0,3);
+    sourceList.forEach((entry) => {
+      const sourceLink = create('a','aa-chatbot-source',{href:entry.url});
+      const sourceUI = DATA.i18n[entry.lang || currentLang] || ui;
+      sourceLink.textContent = `${sourceUI.source}: ${entry.page || entry.title || entry.url}`;
       bubble.appendChild(sourceLink);
-    }
+    });
     item.appendChild(bubble);
     messages.appendChild(item);
     messages.scrollTop = messages.scrollHeight;
     if (persist) {
-      history.push({role,text,source:source ? {url:source.url,page:source.page,title:source.title,lang:source.lang} : null});
+      history.push({role,text,source:sourceList.map((s) => ({url:s.url,page:s.page,title:s.title,lang:s.lang}))});
       history = history.slice(-maxMessages);
       saveHistory();
     }
@@ -625,7 +799,7 @@
     send.disabled = true;
     window.setTimeout(() => {
       const result = answerQuestion(question);
-      const source = result.source ? {...result.source, lang: result.lang} : null;
+      const source = (result.sources || (result.source ? [result.source] : [])).map((item) => ({...item, lang: result.lang}));
       addMessage('assistant', result.text, source);
       input.disabled = false;
       send.disabled = false;

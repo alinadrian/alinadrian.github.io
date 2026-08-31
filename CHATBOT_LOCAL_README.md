@@ -1,6 +1,6 @@
 # Chatbot local pentru AlinAdrian.dev
 
-Versiune: 6.0.0
+Versiune: 7.0.0
 
 ## Ce face
 - rulează 100% în browser;
@@ -65,3 +65,16 @@ Pentru tehnologiile numite explicit, chatbotul răspunde numai dacă tehnologia 
 
 ### Actualizarea conținutului
 Pe site-ul public, chatbotul își reîmprospătează în browser conținutul paginilor aceleiași limbi. Indexul inclus în ZIP rămâne fallback pentru încărcare instantanee și utilizare offline.
+
+
+## v7 – motor local extins, fără costuri
+- motor BM25-style pentru relevanță mai bună în indexul local;
+- corectare locală/toleranță la greșeli de tastare prin distanță de editare;
+- răspuns extractiv din mai multe secțiuni relevante, cu până la 3 surse publice;
+- context îmbunătățit pentru întrebări de continuare;
+- răspuns pentru salut și întrebări despre capabilitățile asistentului;
+- index local regenerat din toate cele 10 limbi ale site-ului;
+- refresh în browser doar din paginile publice ale aceluiași domeniu;
+- fără OpenAI API, fără chei API, fără server AI, fără abonament și fără cost pe mesaj.
+
+Limita intenționată rămâne siguranța factuală: chatbotul răspunde din conținutul public al site-ului și nu inventează date private sau nepublicate.

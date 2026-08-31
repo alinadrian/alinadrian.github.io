@@ -1,0 +1,18 @@
+AlinAdrian.dev V7 / Site 2.5.0 — TEST REPORT
+
+HTML pages checked: 51
+Contact forms checked: 10
+International country/territory dialing entries: 234
+Theme states: Graphite + Light only
+Mint/dark-green theme selectors remaining: 0
+Chatbot languages indexed: 10
+JavaScript syntax checks: PASS
+Chatbot behavior assertions: PASS (16/16)
+Contact phone field presence/localized validation: PASS (10/10)
+Asset version/cache references: PASS (all 51 pages)
+External paid AI/API calls in chatbot: 0
+
+Notes:
+- Chatbot uses local curated data + bundled site index + same-origin public-page refresh only.
+- Phone number is optional and is inserted into the mailto body only when both prefix and number are supplied.
+- No visitor phone data is stored by the static site.
