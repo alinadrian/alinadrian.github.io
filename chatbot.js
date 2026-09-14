@@ -1,10 +1,3 @@
-/*
- * AlinAdrian.dev — local zero-cost chatbot v7
- * - 100% client-side; no OpenAI/API calls.
- * - Answers only from the curated knowledge base plus a local index of the public website.
- * - Understands natural-language variants through aliases, intents, fuzzy matching and full-site local retrieval.
- * - Session history is kept only in sessionStorage on the visitor's device.
- */
 (() => {
   'use strict';
   const DATA = window.AA_LOCAL_CHATBOT_DATA;
@@ -15,8 +8,8 @@
   const currentLang = DATA.i18n[pageLang] ? pageLang : 'en';
   const ui = DATA.i18n[currentLang] || DATA.i18n.en;
   const isRTL = currentLang === 'ar';
-  const storageKey = `aa-local-chatbot-v7-${currentLang}`;
-  const liveIndexStorageKey = `aa-local-site-index-v7-${currentLang}-${location.hostname || 'offline'}`;
+  const storageKey = `aa-local-chatbot-${currentLang}`;
+  const liveIndexStorageKey = `aa-local-site-index-${currentLang}-${location.hostname || 'offline'}`;
   let runtimeSiteChunks = (SITE_INDEX[currentLang] || []).map((chunk) => ({...chunk, _source:'site'}));
   const maxMessages = 40;
   let lastContext = null;
@@ -58,8 +51,7 @@
     return qTokens.some((token) => token === a || token.startsWith(a) || (a.length >= 5 && token.startsWith(stem)));
   };
 
-  // Canonical concepts with multilingual aliases. These aliases let visitors ask the same
-  // thing in many different ways without storing hundreds of fixed Q&A sentences.
+  // Search vocabulary
   const concepts = {
     identity: ['alin','alin adrian','alin adrian ivana','cine este','cine e','despre alin','who is','about alin','chi e','chi è','quien es','wer ist','qui est','quem e','quem é','кто','من هو'],
     role: ['programator','developer','dezvoltator','full stack','fullstack','software developer','web developer','programmer','sviluppatore','desarrollador','entwickler','développeur','desenvolvedor','разработчик','مبرمج'],
@@ -196,8 +188,7 @@
     ? runtimeSiteChunks
     : (SITE_INDEX[lang] || []).map((chunk) => ({...chunk, _source:'site'}));
 
-  // A lightweight lexical relevance check lets new topics already published on the
-  // site enter scope without requiring a hand-written alias for every possible question.
+  // Search scope
   const siteScopeScore = (question, lang = currentLang) => {
     const tokens = tokenise(question).filter((t) => !['alin','adrian','ivana','site','website'].includes(t));
     if (!tokens.length) return 0;
@@ -251,8 +242,6 @@
   };
 
 
-  // V7 local retrieval: BM25-style weighting + typo tolerance + extractive synthesis.
-  // Everything runs in the browser and uses only public site text; no AI/API request is made.
   const editDistance = (a, b) => {
     a = String(a || ''); b = String(b || '');
     if (a === b) return 0;
@@ -412,8 +401,6 @@
     if (chunk._source === 'site') score += .6;
     score += bm25Score(chunk, queryTokens, preferredLang) * 2.4;
 
-    // A heading that closely mirrors the visitor's wording is very strong evidence.
-    // This prevents generic curated aliases from outranking an exact section on the site.
     const qCore = tokenise(queryNorm).filter((t) => !['alin','adrian','ivana'].includes(t));
     if (queryNorm.length >= 8 && title && (` ${title} `).includes(` ${queryNorm} `)) score += 28;
     else if (qCore.length >= 2 && title) {
@@ -432,8 +419,6 @@
       else if (!isNameToken && [...words].some((word) => prefixMatch(word, token))) score += 1.6;
     });
 
-    // Concept aliases are already expanded into queryTokens before ranking. Keeping
-    // scoring lexical here makes full-site search fast even on mobile devices.
 
     if (intent && chunk.route === intent) score += 10;
     if (intent === 'about' && (chunk.kind === 'profile' || chunk.route === 'about')) score += 12;
@@ -509,10 +494,8 @@
   };
   const responseWithSource = (text, source, lang, keywords = []) => responseWithSources(text, source ? [source] : [], lang, keywords);
 
+  // Answer selection
   const answerQuestion = (question) => {
-    // The selected website language is authoritative for every assistant reply.
-    // This keeps the greeting, profile answers, source labels and fallback messages
-    // synchronized when the visitor changes the site's language.
     const preferredLang = currentLang;
     const responseUI = DATA.i18n[preferredLang] || ui;
     const qNorm = normalize(question);
@@ -527,8 +510,6 @@
     const conceptHits = matchConcepts(question);
     const techs = specificTechnologyAsked(question);
 
-    // Questions such as "Știe Python?", "Does he know Django?", "Lavora con MySQL?"
-    // are answered only when that technology is explicitly present in published site content.
     if (techs.length && intent !== 'learning') {
       const techChunk = findPublishedTechnology(techs, preferredLang);
       if (techChunk) return responseWithSource(`${responseUI.intro}\n${shorten(techChunk.text)}`, techChunk, preferredLang);
@@ -565,7 +546,6 @@
       (concepts[concept] || []).slice(0,8).forEach((alias) => tokenise(alias).forEach((t) => enrichedTokens.add(t)));
     });
 
-    // Short follow-ups can inherit the previous route, but never its factual content.
     if (isShortFollowUp(question) && lastContext) {
       enrichedTokens.add(normalize(lastContext.route));
       (lastContext.keywords || []).slice(0,5).forEach((token) => enrichedTokens.add(token));
@@ -581,7 +561,6 @@
     const minScore = queryTokens.length <= 1 ? 9 : 12;
     if (!best || best.score < minScore) return { text: responseUI.unknown, lang: preferredLang };
 
-    // Require meaningful evidence. A match on the name alone is never enough.
     const informative = tokens.filter((t) => !['alin','adrian','ivana'].includes(t));
     const bestText = chunkSearchText(best.chunk);
     const evidenceTokens = [...new Set([...informative, ...correctedTokens.filter((t) => !['alin','adrian','ivana'].includes(t))])];
@@ -589,7 +568,6 @@
     const hasIntentEvidence = !!intent || conceptHits.some((h) => h.concept !== 'identity');
     if (informative.length && evidence.length === 0 && !hasIntentEvidence) return { text: responseUI.unknown, lang: preferredLang };
 
-    // Avoid answering from a weak ambiguous match when two unrelated chunks score similarly.
     if (!intent && !conceptHits.length && second && best.score - second.score < .8 && best.score < 18) {
       return { text: responseUI.unknown, lang: preferredLang };
     }
@@ -636,9 +614,6 @@
   };
 
   const refreshSiteIndexFromPublishedPages = async () => {
-    // Offline/file:// mode uses the bundled index. On the published site we refresh
-    // the same-language public pages in the visitor's browser, so future text edits
-    // become searchable without an AI API or server-side chatbot.
     if (!/^https?:$/.test(location.protocol) || typeof fetch !== 'function') return;
     try {
       const cached = JSON.parse(sessionStorage.getItem(liveIndexStorageKey) || 'null');
@@ -659,8 +634,6 @@
     };
     base.forEach((chunk) => addPage(chunk.path || chunk.url, chunk.page, chunk.route));
 
-    // Discover newly added public pages from sitemap.xml as well. This means adding a
-    // new page to the sitemap does not require adding a new fixed question to the bot.
     try {
       const sitemapResponse = await fetch(new URL('/sitemap.xml', location.origin).href, {credentials:'same-origin',cache:'no-cache'});
       if (sitemapResponse.ok) {
@@ -695,8 +668,6 @@
     }
   };
 
-  // Fire-and-forget: answers are immediately available from the bundled index;
-  // this refresh only keeps it synchronized with the currently published pages.
   refreshSiteIndexFromPublishedPages();
 
   const create = (tag, className, attrs = {}) => {
@@ -734,8 +705,6 @@
   headerActions.append(resetBtn, closeBtn);
   header.append(identity, headerActions);
 
-  // The visitor starts with a clean chat: no API/local-status banner and no
-  // predefined question chips. They can type any question about Alin or the site.
   const messages = create('div','aa-chatbot-messages',{'role':'log','aria-live':'polite','aria-relevant':'additions'});
 
   const form = create('form','aa-chatbot-form');
@@ -747,9 +716,6 @@
   root.append(panel, launcher);
   document.body.appendChild(root);
 
-  // History is stored separately for each site language. Older v3 history is
-  // deliberately not reused, because it could show Romanian messages after
-  // switching to Italian (or another language).
   let history = [];
   try {
     const saved = JSON.parse(sessionStorage.getItem(storageKey) || '[]');

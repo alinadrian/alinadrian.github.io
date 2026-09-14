@@ -52,11 +52,11 @@ const safeStorage = {
     try { return window.localStorage?.getItem(key) ?? null; } catch (_) { return null; }
   },
   set(key, value) {
-    try { window.localStorage?.setItem(key, value); } catch (_) { /* Storage may be blocked in preview/private contexts. */ }
+    try { window.localStorage?.setItem(key, value); } catch (_) {  }
   },
 };
+// Theme preference
 const savedThemeRaw = safeStorage.get('portfolio-theme');
-// Migrate the removed dark-blue theme to Graphite for returning visitors.
 const savedTheme = (savedThemeRaw === 'dark' || savedThemeRaw === 'slate' || savedThemeRaw === 'mint') ? 'graphite' : savedThemeRaw;
 const systemPrefersLight = window.matchMedia?.('(prefers-color-scheme: light)').matches;
 const initialTheme = availableThemes.includes(savedTheme) ? savedTheme : (systemPrefersLight ? 'light' : 'graphite');
@@ -95,7 +95,6 @@ function updateThemeButton(theme) {
 root.dataset.theme = initialTheme;
 updateThemeButton(initialTheme);
 
-// Remove the obsolete saved value once migrated.
 if (savedThemeRaw === 'dark' || savedThemeRaw === 'slate' || savedThemeRaw === 'mint') safeStorage.set('portfolio-theme', 'graphite');
 
 themeButton?.addEventListener('click', () => {
@@ -106,6 +105,7 @@ themeButton?.addEventListener('click', () => {
   updateThemeButton(nextTheme);
 });
 
+// Hero typing effect
 const typingElement = document.querySelector('[data-typing]');
 if (typingElement && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   let words = [];
@@ -159,7 +159,6 @@ filterButtons.forEach((button) => button.addEventListener('click', () => {
 }));
 
 
-// V2.5.0 — optional international callback number, fully client-side / zero-cost.
 const internationalDialCodes = [{"country":"Afghanistan","code":"+93"},{"country":"Albania","code":"+355"},{"country":"Algeria","code":"+213"},{"country":"American Samoa","code":"+1684"},{"country":"Angola","code":"+244"},{"country":"Anguilla","code":"+1264"},{"country":"Antigua and Barbuda","code":"+1268"},{"country":"Argentina","code":"+54"},{"country":"Armenia","code":"+374"},{"country":"Aruba","code":"+297"},{"country":"Australia","code":"+61"},{"country":"Austria","code":"+43"},{"country":"Azerbaijan","code":"+994"},{"country":"Bahrain","code":"+973"},{"country":"Bangladesh","code":"+880"},{"country":"Barbados","code":"+1246"},{"country":"Belarus","code":"+375"},{"country":"Belgium","code":"+32"},{"country":"Belize","code":"+501"},{"country":"Benin","code":"+229"},{"country":"Bermuda","code":"+1441"},{"country":"Bhutan","code":"+975"},{"country":"Bolivia","code":"+591"},{"country":"Bosnia and Herzegovina","code":"+387"},{"country":"Botswana","code":"+267"},{"country":"Brazil","code":"+55"},{"country":"British Indian Ocean Territory","code":"+246"},{"country":"Brunei","code":"+673"},{"country":"Bulgaria","code":"+359"},{"country":"Burkina Faso","code":"+226"},{"country":"Burundi","code":"+257"},{"country":"Cambodia","code":"+855"},{"country":"Cameroon","code":"+237"},{"country":"Canada","code":"+1"},{"country":"Cape Verde","code":"+238"},{"country":"Cayman Islands","code":"+1345"},{"country":"Central African Republic","code":"+236"},{"country":"Chad","code":"+235"},{"country":"Chile","code":"+56"},{"country":"China","code":"+86"},{"country":"Christmas Island","code":"+61"},{"country":"Cocos (Keeling) Islands","code":"+61"},{"country":"Colombia","code":"+57"},{"country":"Comoros","code":"+269"},{"country":"Cook Islands","code":"+682"},{"country":"Costa Rica","code":"+506"},{"country":"Croatia","code":"+385"},{"country":"Cuba","code":"+53"},{"country":"Cyprus","code":"+357"},{"country":"Czech Republic","code":"+420"},{"country":"Democratic Republic of the Congo","code":"+243"},{"country":"Denmark","code":"+45"},{"country":"Djibouti","code":"+253"},{"country":"Dominica","code":"+1767"},{"country":"Dominican Republic","code":"+1809"},{"country":"Dominican Republic","code":"+1829"},{"country":"Dominican Republic","code":"+1849"},{"country":"East Timor","code":"+670"},{"country":"Ecuador","code":"+593"},{"country":"Egypt","code":"+20"},{"country":"El Salvador","code":"+503"},{"country":"Equatorial Guinea","code":"+240"},{"country":"Eritrea","code":"+291"},{"country":"Estonia","code":"+372"},{"country":"Ethiopia","code":"+251"},{"country":"Falkland Islands","code":"+500"},{"country":"Faroe Islands","code":"+298"},{"country":"Federated States of Micronesia","code":"+691"},{"country":"Fiji","code":"+679"},{"country":"Finland","code":"+358"},{"country":"France","code":"+33"},{"country":"French Guiana","code":"+594"},{"country":"French Polynesia","code":"+689"},{"country":"Gabon","code":"+241"},{"country":"Georgia","code":"+995"},{"country":"Germany","code":"+49"},{"country":"Ghana","code":"+233"},{"country":"Gibraltar","code":"+350"},{"country":"Greece","code":"+30"},{"country":"Greenland","code":"+299"},{"country":"Grenada","code":"+1473"},{"country":"Guadeloupe","code":"+590"},{"country":"Guam","code":"+1671"},{"country":"Guatemala","code":"+502"},{"country":"Guernsey","code":"+44"},{"country":"Guinea","code":"+224"},{"country":"Guinea-Bissau","code":"+245"},{"country":"Guyana","code":"+592"},{"country":"Haiti","code":"+509"},{"country":"Honduras","code":"+504"},{"country":"Hong Kong","code":"+852"},{"country":"Hungary","code":"+36"},{"country":"Iceland","code":"+354"},{"country":"India","code":"+91"},{"country":"Indonesia","code":"+62"},{"country":"Iran","code":"+98"},{"country":"Iraq","code":"+964"},{"country":"Ireland","code":"+353"},{"country":"Isle of Man","code":"+44"},{"country":"Israel","code":"+972"},{"country":"Italy","code":"+39"},{"country":"Ivory Coast","code":"+225"},{"country":"Jamaica","code":"+1876"},{"country":"Japan","code":"+81"},{"country":"Jersey","code":"+44"},{"country":"Jordan","code":"+962"},{"country":"Kazakhstan","code":"+76"},{"country":"Kazakhstan","code":"+77"},{"country":"Kenya","code":"+254"},{"country":"Kiribati","code":"+686"},{"country":"Kuwait","code":"+965"},{"country":"Kyrgyzstan","code":"+996"},{"country":"Laos","code":"+856"},{"country":"Latvia","code":"+371"},{"country":"Lebanon","code":"+961"},{"country":"Lesotho","code":"+266"},{"country":"Liberia","code":"+231"},{"country":"Libya","code":"+218"},{"country":"Liechtenstein","code":"+423"},{"country":"Lithuania","code":"+370"},{"country":"Luxembourg","code":"+352"},{"country":"Macau","code":"+853"},{"country":"Madagascar","code":"+261"},{"country":"Malawi","code":"+265"},{"country":"Malaysia","code":"+60"},{"country":"Maldives","code":"+960"},{"country":"Mali","code":"+223"},{"country":"Malta","code":"+356"},{"country":"Marshall Islands","code":"+692"},{"country":"Martinique","code":"+596"},{"country":"Mauritania","code":"+222"},{"country":"Mauritius","code":"+230"},{"country":"Mayotte","code":"+262"},{"country":"Mexico","code":"+52"},{"country":"Moldova","code":"+373"},{"country":"Monaco","code":"+377"},{"country":"Mongolia","code":"+976"},{"country":"Montserrat","code":"+1664"},{"country":"Morocco","code":"+212"},{"country":"Mozambique","code":"+258"},{"country":"Namibia","code":"+264"},{"country":"Nauru","code":"+674"},{"country":"Nepal","code":"+977"},{"country":"Netherlands","code":"+31"},{"country":"New Caledonia","code":"+687"},{"country":"New Zealand","code":"+64"},{"country":"Nicaragua","code":"+505"},{"country":"Niger","code":"+227"},{"country":"Nigeria","code":"+234"},{"country":"Niue","code":"+683"},{"country":"Norfolk Island","code":"+672"},{"country":"North Korea","code":"+850"},{"country":"Northern Mariana Islands","code":"+1670"},{"country":"Norway","code":"+47"},{"country":"Oman","code":"+968"},{"country":"Pakistan","code":"+92"},{"country":"Palau","code":"+680"},{"country":"Panama","code":"+507"},{"country":"Papua New Guinea","code":"+675"},{"country":"Paraguay","code":"+595"},{"country":"Peru","code":"+51"},{"country":"Philippines","code":"+63"},{"country":"Pitcairn Islands","code":"+64"},{"country":"Poland","code":"+48"},{"country":"Portugal","code":"+351"},{"country":"Puerto Rico","code":"+1787"},{"country":"Puerto Rico","code":"+1939"},{"country":"Qatar","code":"+974"},{"country":"Republic of Macedonia","code":"+389"},{"country":"Republic of the Congo","code":"+242"},{"country":"Romania","code":"+40"},{"country":"Russia","code":"+7"},{"country":"Rwanda","code":"+250"},{"country":"Réunion","code":"+262"},{"country":"Saint Helena","code":"+290"},{"country":"Saint Kitts and Nevis","code":"+1869"},{"country":"Saint Lucia","code":"+1758"},{"country":"Saint Pierre and Miquelon","code":"+508"},{"country":"Saint Vincent and the Grenadines","code":"+1784"},{"country":"Samoa","code":"+685"},{"country":"San Marino","code":"+378"},{"country":"Saudi Arabia","code":"+966"},{"country":"Senegal","code":"+221"},{"country":"Serbia","code":"+381"},{"country":"Seychelles","code":"+248"},{"country":"Sierra Leone","code":"+232"},{"country":"Singapore","code":"+65"},{"country":"Slovakia","code":"+421"},{"country":"Slovenia","code":"+386"},{"country":"Solomon Islands","code":"+677"},{"country":"Somalia","code":"+252"},{"country":"South Africa","code":"+27"},{"country":"South Georgia","code":"+500"},{"country":"South Korea","code":"+82"},{"country":"South Sudan","code":"+211"},{"country":"Spain","code":"+34"},{"country":"Sri Lanka","code":"+94"},{"country":"Sudan","code":"+249"},{"country":"Suriname","code":"+597"},{"country":"Svalbard and Jan Mayen","code":"+4779"},{"country":"Swaziland","code":"+268"},{"country":"Sweden","code":"+46"},{"country":"Switzerland","code":"+41"},{"country":"Syria","code":"+963"},{"country":"São Tomé and Príncipe","code":"+239"},{"country":"Taiwan","code":"+886"},{"country":"Tajikistan","code":"+992"},{"country":"Tanzania","code":"+255"},{"country":"Thailand","code":"+66"},{"country":"The Bahamas","code":"+1242"},{"country":"The Gambia","code":"+220"},{"country":"Togo","code":"+228"},{"country":"Tokelau","code":"+690"},{"country":"Tonga","code":"+676"},{"country":"Trinidad and Tobago","code":"+1868"},{"country":"Tunisia","code":"+216"},{"country":"Turkey","code":"+90"},{"country":"Turkmenistan","code":"+993"},{"country":"Tuvalu","code":"+688"},{"country":"Uganda","code":"+256"},{"country":"Ukraine","code":"+380"},{"country":"United Arab Emirates","code":"+971"},{"country":"United Kingdom","code":"+44"},{"country":"United States","code":"+1"},{"country":"Uruguay","code":"+598"},{"country":"Uzbekistan","code":"+998"},{"country":"Vanuatu","code":"+678"},{"country":"Venezuela","code":"+58"},{"country":"Vietnam","code":"+84"},{"country":"Wallis and Futuna","code":"+681"},{"country":"Western Sahara","code":"+212"},{"country":"Yemen","code":"+967"},{"country":"Zambia","code":"+260"},{"country":"Zimbabwe","code":"+263"}];
 const populateInternationalDialCodes = (form) => {
   const select = form?.querySelector('[data-phone-prefix]');
@@ -201,8 +200,6 @@ const validateOptionalPhone = (form) => {
   return valid;
 };
 
-// GitHub Pages is static. The contact form opens the visitor's local email app
-// instead of calling a server endpoint, so it works without a backend or stored data.
 const form = document.getElementById('contact-form');
 const formMessage = document.getElementById('form-message');
 if (form && formMessage) {
@@ -259,10 +256,6 @@ document.body.appendChild(backToTop);
 window.addEventListener('scroll', () => backToTop.classList.toggle('visible', window.scrollY > 650), { passive: true });
 backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-// =========================================================
-// SEO V2.4 — page-specific professional motion design
-// No third-party libraries; respects reduced-motion settings.
-// =========================================================
 (() => {
   try {
   const filename = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
@@ -280,7 +273,6 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
   const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   if (prefersReducedMotion) return;
 
-  // Homepage: a low-density canvas particle field with short connecting lines.
   if (page === 'home') {
     const hero = document.querySelector('.hero');
     if (hero) {
@@ -399,8 +391,6 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
         raf = requestAnimationFrame(draw);
       };
 
-      // Throttled window resize avoids ResizeObserver loop warnings while keeping
-      // the professional particle background responsive.
       let resizeRaf = 0;
       const scheduleResize = () => {
         if (resizeRaf) cancelAnimationFrame(resizeRaf);
@@ -422,7 +412,6 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
     }
   }
 
-  // Projects: restrained pointer tilt on capable desktop pointers only.
   if (page === 'projects' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
     document.querySelectorAll('.project-wide').forEach((card) => {
       const reset = () => {
@@ -446,8 +435,6 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
   }
 
 
-  // Discreet protection for personal profile media only.
-  // This intentionally does NOT disable right-click, selection or keyboard shortcuts site-wide.
   document.querySelectorAll('[data-protected-media]').forEach((media) => {
     media.querySelectorAll('img').forEach((img) => {
       img.draggable = false;
@@ -455,8 +442,6 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
     });
   });
 
-  // Capture-phase protection is deliberately scoped to profile media.
-  // The transparent shield means the browser never receives the actual <img> as the right-click target.
   ['contextmenu', 'dragstart', 'selectstart'].forEach((type) => {
     document.addEventListener(type, (event) => {
       const target = event.target instanceof Element ? event.target : null;
@@ -468,12 +453,10 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
   });
 
   } catch (_) {
-    // Motion is progressive enhancement only; core content remains fully usable.
   }
 })();
 
 
-// SEO V2.4.6 — compact language dropdown behavior
 (() => {
   const selectors = document.querySelectorAll('[data-language-selector]');
   if (!selectors.length) return;
@@ -497,7 +480,7 @@ backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 's
       button.setAttribute('aria-expanded', String(willOpen));
       if (willOpen) {
         const active = menu.querySelector('.language-option.active');
-        try { active?.scrollIntoView({ block: 'nearest' }); } catch (_) { /* Non-critical preview fallback. */ }
+        try { active?.scrollIntoView({ block: 'nearest' }); } catch (_) {  }
       }
     });
 

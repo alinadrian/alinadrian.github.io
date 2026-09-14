@@ -204,7 +204,7 @@ pre { margin: 0; padding: 28px 26px; overflow-x: auto; color: #dceaf7; font: 500
 
 footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 36px; display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: .84rem; }
 
-/* Core content is always visible. JS only adds optional entrance motion. */
+
 .reveal { opacity: 1; transform: none; }
 .reveal.reveal-pending { opacity: 1; transform: translateY(14px); transition: transform .7s ease; }
 .reveal.reveal-pending.visible { opacity: 1; transform: translateY(0); }
@@ -235,7 +235,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   pre { font-size: .72rem; padding: 22px 16px; }
 }
 
-/* Multi-page additions */
+
 .main-nav a.active { color: var(--text); position: relative; }
 .main-nav a.active:not(.nav-cta)::after {
   content: "";
@@ -326,7 +326,6 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 
 
-/* Experience upgrades */
 [data-theme="light"] {
   --bg: #FFFFFF;
   --bg-soft: #F4F7FB;
@@ -530,7 +529,6 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 
 
-/* Version 3: credibility and publishing readiness */
 .current-focus-section { padding-top: 0; padding-bottom: 30px; }
 .current-focus-banner {
   display: grid;
@@ -572,7 +570,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   .current-focus-banner .focus-cloud { justify-content: flex-start; }
 }
 
-/* CV and professional profile integration */
+
 .profile-card-top {
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -633,7 +631,6 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 
 
-/* Contact form helpers and intermediate navigation breakpoint */
 .honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .form-note { margin: -4px 0 0; color: var(--muted); font-size: .78rem; }
 @media (max-width: 1060px) {
@@ -641,7 +638,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   .site-header { padding-left: 14px; padding-right: 14px; }
 }
 
-/* Graphite theme: near-black with a very subtle grey cast */
+
 [data-theme="graphite"] {
   --bg: #1F2329;
   --bg-soft: #252B33;
@@ -677,7 +674,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 [data-theme="graphite"] .info-card p { color: #cdd0d3; }
 [data-theme="graphite"] .language-switcher { background: rgba(255, 255, 255, .025); }
 
-/* Two-theme control: Graphite ↔ Light */
+
 .theme-toggle {
   width: 74px;
   display: inline-flex;
@@ -717,13 +714,8 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   [data-theme="graphite"] .main-nav { background: rgba(13, 15, 17, .98); }
 }
 
-/* =========================================================
-   SEO V2.4 — restrained motion design
-   Professional motion is page-specific, theme-aware and
-   disabled automatically for prefers-reduced-motion users.
-   ========================================================= */
 
-/* Keep animated decoration below real content. */
+/* Page motion */
 .page-home .hero,
 .page-about .content-section,
 .page-skills .content-section,
@@ -732,7 +724,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   isolation: isolate;
 }
 
-/* 1) Homepage — slow connected particles + faint code glyphs */
+
 .page-home .hero {
   overflow: hidden;
 }
@@ -775,7 +767,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 [data-theme="light"] .tech-particles { opacity: .34; }
 [data-theme="light"] .tech-glyph { opacity: .06; }
 
-/* 2) About — slow portrait glow + near-transparent geometry */
+
 .page-about .profile-card {
   position: relative;
   overflow: hidden;
@@ -830,7 +822,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   background: radial-gradient(circle, rgba(77,163,255,.14), rgba(90,176,255,.065) 48%, transparent 72%);
 }
 
-/* 3) Skills — fine technical grid + micro-interactions */
+
 .page-skills .content-section::before {
   content: "";
   position: absolute;
@@ -884,7 +876,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 [data-theme="light"] .page-skills .content-section::before { opacity: .27; }
 
-/* 4) Projects — slightly richer ambient motion + depth */
+
 .page-projects .content-section::before {
   content: "";
   position: absolute;
@@ -936,7 +928,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 [data-theme="light"] .page-projects .content-section::before { opacity: .68; }
 
-/* 5) Contact — intentionally calm and almost static */
+
 .page-contact .page-glow { opacity: .045; }
 .page-contact .contact-panel,
 .page-contact .contact-option,
@@ -945,7 +937,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 .page-contact .contact-panel:hover { border-color: rgba(77,163,255,.13); }
 
-/* Performance: reduce decoration on smaller/mobile screens. */
+
 @media (max-width: 760px) {
   .tech-glyph-layer { opacity: .52; }
   .page-skills .content-section::before { background-size: 54px 54px; opacity: .13; }
@@ -954,7 +946,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   .page-projects .project-wide:hover .project-visual-code { transform: translateY(-2px); }
 }
 
-/* Accessibility: no animated backgrounds / tilt when reduced motion is requested. */
+
 @media (prefers-reduced-motion: reduce) {
   .tech-particles,
   .tech-glyph-layer { display: none !important; }
@@ -970,7 +962,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 
 
-/* SEO V2.4.1 — discreet media protection (no global UX restrictions) */
+/* Profile media */
 .profile-photo-protect {
   position: relative;
   width: 220px;
@@ -1006,11 +998,11 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   .profile-photo-protect::after { right: 8px; bottom: 7px; font-size: 7px; opacity: .24; }
 }
 @media print {
-  /* Preserve the professional printable layout; protection stays screen-only. */
+
   .profile-photo-protect::after { display: none; }
 }
 
-/* SEO V2.4.2 — hardened profile-photo protection without changing site UX */
+
 .profile-photo-protect { overflow: hidden; }
 .profile-photo-shield {
   position: absolute;
@@ -1027,7 +1019,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 @media print { .profile-photo-shield { display: none; } }
 
-/* AAI professional brand responsiveness */
+
 @media (max-width: 1100px) {
   .brand-role { display: none; }
   .brand-name { font-size: .9rem; }
@@ -1040,7 +1032,7 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 [data-theme="light"] .brand-mark { color: #2F7FDB; filter: drop-shadow(0 8px 15px rgba(47,127,219,.13)); }
 
 
-/* V2.4.12 — canonical compact 10-language dropdown */
+/* Language menu */
 .language-switcher.language-dropdown {
   position: relative;
   display: inline-flex;
@@ -1185,9 +1177,6 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 
 
-
-
-/* V2.4.12 stability and accessibility fallbacks */
 @media (max-width: 760px) {
   [data-theme="light"] .main-nav { background: rgba(255,255,255,.98); }
 }
@@ -1198,10 +1187,6 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
 }
 
 
-/* =========================================================
-   V2.5.0 — hardened, always-visible two-theme control
-   Keeps the control in the header on desktop and mobile.
-   ========================================================= */
 .theme-toggle {
   display: inline-flex !important;
   visibility: visible !important;
@@ -1245,7 +1230,8 @@ footer { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 
   }
 }
 
-/* V2.5.0 — international callback phone field */
+
+/* Contact phone field */
 .contact-phone-row { display: grid; grid-template-columns: minmax(150px, .9fr) minmax(0, 1.35fr); gap: 10px; }
 .contact-form select { appearance: auto; cursor: pointer; }
 .contact-form select option { color: #111820; background: #fff; }

@@ -1,4 +1,3 @@
-/* AlinAdrian.dev — local chatbot (no API) */
 .aa-chatbot-root {
   --aa-chat-surface: color-mix(in srgb, var(--card-strong, #2A313A) 92%, transparent);
   --aa-chat-surface-2: color-mix(in srgb, var(--bg-soft, #252B33) 92%, transparent);
@@ -83,7 +82,7 @@
   .aa-chatbot-messages { scroll-behavior: auto; }
 }
 
-/* Keep the existing back-to-top control visible beside the chatbot launcher. */
+/* Keep the back-to-top button clear of the chat launcher. */
 .back-to-top { right: 94px; }
 @media (max-width: 560px) { .back-to-top { right: 78px; bottom: 16px; } }
 
