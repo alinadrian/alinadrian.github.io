@@ -1,3 +1,8 @@
+// Canonicalize explicit /index.html URLs without requiring inline JavaScript.
+if (/\/index\.html$/i.test(window.location.pathname)) {
+  window.location.replace(window.location.pathname.replace(/index\.html$/i, '') + window.location.search + window.location.hash);
+}
+
 const root = document.documentElement;
 const menuButton = document.querySelector('.menu-button');
 const navigation = document.querySelector('.main-nav');
